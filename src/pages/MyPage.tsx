@@ -1,0 +1,73 @@
+﻿import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+export function MyPage() {
+  const navigate = useNavigate();
+  const { user, updateProfile, signout } = useAuthStore();
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? true);
+
+  return (
+    <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
+      <Card className="space-y-6 p-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Account Settings</h1>
+          <p className="mt-1 text-sm text-mutedForeground">계정 정보와 알림 설정을 관리할 수 있습니다.</p>
+        </div>
+        <div className="space-y-4">
+          <div><label className="mb-2 block text-sm text-mutedForeground">Name</label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div><label className="mb-2 block text-sm text-mutedForeground">Email</label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+          <div className="flex items-center justify-between rounded-xl border border-border p-4">
+            <p className="text-sm">Push Notifications</p>
+            <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => updateProfile({ name, email, pushNotifications })}>저장</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              signout();
+              navigate("/signin");
+            }}
+          >
+            로그아웃
+          </Button>
+        </div>
+
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <h2 className="text-sm font-semibold text-red-700">Danger Zone</h2>
+          <p className="mt-1 text-xs text-red-600">회원 탈퇴 시 계정 데이터는 복구할 수 없습니다.</p>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button className="mt-3" variant="destructive">회원 탈퇴</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <h3 className="text-lg font-semibold">정말 탈퇴하시겠습니까?</h3>
+              <p className="mt-2 text-sm text-mutedForeground">이 작업은 되돌릴 수 없습니다. 테스트 환경에서는 실제 삭제가 발생하지 않습니다.</p>
+              <div className="mt-5 flex justify-end gap-2">
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    signout();
+                    navigate("/signin");
+                  }}
+                >
+                  탈퇴 진행
+                </AlertDialogAction>
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
