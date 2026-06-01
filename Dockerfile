@@ -2,11 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY front-end/package.json front-end/package-lock.json ./
 
 RUN npm ci
 
-COPY . .
+COPY front-end/ .
 
 EXPOSE 5173
 
