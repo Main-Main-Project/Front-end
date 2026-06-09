@@ -1,6 +1,7 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftCircle, ArrowRightCircle, LogIn, UserPlus } from "lucide-react";
+import { signup as signupApi } from "@/lib/authApi";
 import { useAuthStore } from "@/stores/authStore";
 import "@/components/auth-animated.css";
 
@@ -11,30 +12,124 @@ type AuthAnimatedProps = {
 export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
   const navigate = useNavigate();
   const signin = useAuthStore((s) => s.signin);
+
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
+
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
 
-  // flip CSS는 컨테이너 클래스(active/close)로 애니메이션 상태를 제어한다.
+  // 로그인과 회원가입 에러를 분리해서 서로 섞이지 않게 관리한다
+  const [loginError, setLoginError] = useState("");
+  const [signupError, setSignupError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 현재 모드에 따라 뒤집기 애니메이션 클래스를 결정한다
   const containerClass = useMemo(() => {
     if (mode === "signup") return "auth-flip-container active";
     return "auth-flip-container close";
   }, [mode]);
 
-  const handleLoginSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    signin();
-    navigate("/chat");
-  };
+  // 로그인 입력값을 다시 수정하기 시작하면 이전 에러 문구를 지운다
+  useEffect(() => {
+    if (loginError) {
+      setLoginError("");
+    }
+  }, [loginEmail, loginPassword]);
 
-  const handleRegisterSubmit = (e: FormEvent<HTMLFormElement>) => {
+  // 회원가입 입력값을 다시 수정하기 시작하면 이전 에러 문구를 지운다
+  useEffect(() => {
+    if (signupError) {
+      setSignupError("");
+    }
+  }, [signupName, signupEmail, signupPassword, signupPasswordConfirm]);
+
+  const handleLoginSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // 회원가입은 비밀번호 확인 불일치 시 제출을 막는다.
-    if (signupPassword !== signupPasswordConfirm) {
+
+    if (!loginEmail.trim()) {
+      setLoginError("이메일을 입력해주세요.");
       return;
     }
-    setMode("signin");
-    navigate("/signin");
+
+    if (!loginPassword.trim()) {
+      setLoginError("비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setLoginError("");
+    setIsSubmitting(true);
+
+    try {
+      await signin({
+        email: loginEmail,
+        password: loginPassword,
+      });
+      navigate("/chat");
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!signupName.trim()) {
+      setSignupError("이름을 입력해주세요.");
+      return;
+    }
+
+    if (!signupEmail.trim()) {
+      setSignupError("이메일을 입력해주세요.");
+      return;
+    }
+
+    if (!signupPassword.trim()) {
+      setSignupError("비밀번호를 입력해주세요.");
+      return;
+    }
+
+    if (signupPassword.length < 8) {
+      setSignupError("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+
+    if (!signupPasswordConfirm.trim()) {
+      setSignupError("비밀번호 확인을 입력해주세요.");
+      return;
+    }
+
+    if (signupPassword !== signupPasswordConfirm) {
+      setSignupError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    setSignupError("");
+    setIsSubmitting(true);
+
+    try {
+      await signupApi({
+        name: signupName,
+        email: signupEmail,
+        password: signupPassword,
+        social: "NORMAL",
+        user_type: "USER",
+      });
+
+      // 회원가입이 끝나면 로그인 화면으로 돌려보낸다
+      setMode("signin");
+      navigate("/signin");
+    } catch (err) {
+      setSignupError(err instanceof Error ? err.message : "회원가입에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -44,10 +139,30 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
           <div className="content">
             <h1>Log In</h1>
             <form onSubmit={handleLoginSubmit}>
-              <input type="email" placeholder="email" required />
-              <input type="password" placeholder="password" required />
-              <button type="submit">Log In</button>
+              <input
+                type="email"
+                placeholder="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+              />
+              {loginError && (
+                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {loginError}
+                </p>
+              )}
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "처리 중..." : "Log In"}
+              </button>
             </form>
+
             <span className="loginwith">Or Connect with</span>
             <div className="social-buttons" aria-label="Social login">
               <button type="button" className="social-icon" aria-label="Google login">
@@ -77,6 +192,8 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
               type="button"
               id="register"
               onClick={() => {
+                setLoginError("");
+                setSignupError("");
                 setMode("signup");
                 navigate("/signup");
               }}
@@ -96,6 +213,8 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
               type="button"
               id="login"
               onClick={() => {
+                setLoginError("");
+                setSignupError("");
                 setMode("signin");
                 navigate("/signin");
               }}
@@ -125,10 +244,24 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
                 </svg>
               </button>
             </div>
+
             <span className="loginwith">Or</span>
+
             <form onSubmit={handleRegisterSubmit}>
-              <input type="text" placeholder="name" required />
-              <input type="email" placeholder="email" required />
+              <input
+                type="text"
+                placeholder="name"
+                value={signupName}
+                onChange={(e) => setSignupName(e.target.value)}
+                required
+              />
+              <input
+                type="email"
+                placeholder="email"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                required
+              />
               <input
                 type="password"
                 placeholder="password"
@@ -143,10 +276,14 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
                 onChange={(e) => setSignupPasswordConfirm(e.target.value)}
                 required
               />
-              {signupPasswordConfirm.length > 0 && signupPassword !== signupPasswordConfirm && (
-                <span>Password does not match.</span>
+              {signupError && (
+                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {signupError}
+                </p>
               )}
-              <button type="submit">Register</button>
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "처리 중..." : "Register"}
+              </button>
             </form>
           </div>
         </div>
