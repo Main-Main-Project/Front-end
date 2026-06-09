@@ -65,11 +65,12 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
     setIsSubmitting(true);
 
     try {
-      await signin({
+      const user = await signin({
         email: loginEmail,
         password: loginPassword,
       });
-      navigate("/chat");
+
+      navigate(user.userType === "ADMIN" ? "/admin" : "/chat");
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
     } finally {
