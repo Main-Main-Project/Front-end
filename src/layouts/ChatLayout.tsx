@@ -72,8 +72,17 @@ export function ChatLayout() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user?.name ?? "Guest"}</p>
-            <p className="truncate text-xs text-mutedForeground">{user?.email ?? "guest@example.com"}</p>
+            {user ? (
+              <>
+                <p className="truncate text-sm font-medium">{user.name}</p>
+                <p className="truncate text-xs text-mutedForeground">{user.email}</p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+              </div>
+            )}
           </div>
           <Button variant={panel === "mypage" ? "secondary" : "ghost"} size="icon" aria-label="설정" onClick={() => setPanel("mypage")}>
             <Settings2 className="size-4" />
