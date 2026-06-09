@@ -12,7 +12,7 @@ export type UserInfoResponse = {
 // 인증이 필요한 사용자 정보 조회는 apiFetch를 통해 호출해서
 // access token 만료 시 refresh -> 재시도 흐름을 자동으로 타게 한다
 export async function getUserInfo() {
-  const response = await apiFetch("/userInfo", {
+  const response = await apiFetch("/user/userInfo", {
     method: "GET",
   });
 

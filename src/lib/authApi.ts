@@ -77,7 +77,7 @@ function getNetworkErrorMessage(error: unknown, fallback: string) {
 
 export async function login(payload: { email: string; password: string }) {
   try {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -99,7 +99,7 @@ export async function login(payload: { email: string; password: string }) {
 
 export async function signup(payload: SignupRequest) {
   try {
-    const response = await fetch(`${API_BASE_URL}/signup`, {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -132,7 +132,7 @@ export async function signup(payload: SignupRequest) {
 
 export async function refresh(refreshToken: string) {
   try {
-    const response = await fetch(`${API_BASE_URL}/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
