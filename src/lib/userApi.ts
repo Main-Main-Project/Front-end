@@ -5,7 +5,7 @@ export type UserInfoResponse = {
   email: string;
   name: string;
   social: string;
-  user_type: string;
+  user_type: "USER" | "ADMIN";
   created_at: string;
 };
 
@@ -20,6 +20,10 @@ export async function getUserInfo() {
 
   if (!response.ok) {
     throw new Error(data?.detail ?? "사용자 정보를 불러오지 못했습니다.");
+  }
+
+  if (data?.user_type !== "USER" && data?.user_type !== "ADMIN") {
+    throw new Error("알 수 없는 사용자 권한입니다.");
   }
 
   return data as UserInfoResponse;

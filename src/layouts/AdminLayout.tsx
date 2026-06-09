@@ -5,6 +5,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  LucideIcon, 
   Menu,
   MessageSquare,
   Search,
@@ -18,13 +19,20 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 
-const adminNavItems = [
+type AdminNavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+};
+
+const adminNavItems: AdminNavItem[] = [
   { to: "/admin", label: "대시보드", icon: LayoutDashboard, end: true },
   { to: "/admin/users", label: "사용자 관리", icon: Users },
   { to: "/admin/documents", label: "문서 관리", icon: FileText },
   { to: "/admin/chats", label: "채팅 모니터링", icon: MessageSquare },
   { to: "/admin/systems", label: "시스템 상태", icon: ActivitySquare },
-] as const;
+];
 
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,7 +42,9 @@ export function AdminLayout() {
   const location = useLocation();
 
   const currentTitle = useMemo(() => {
-    const found = adminNavItems.find((item) => (item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)));
+    const found = adminNavItems.find((item) =>
+      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+    );
     return found?.label ?? "대시보드";
   }, [location.pathname]);
 
@@ -73,7 +83,7 @@ export function AdminLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.end}
+                end={item.end ?? false}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   cn(

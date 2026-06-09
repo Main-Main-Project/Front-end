@@ -7,21 +7,24 @@ type User = {
   name: string;
   email: string;
   pushNotifications: boolean;
+  userType: "USER" | "ADMIN";
 };
 
 type AuthState = {
   isSignedIn: boolean;
+  isHydrating: boolean;
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
-  signin: (payload: { email: string; password: string }) => Promise<void>;
+  signin: (payload: { email: string; password: string }) => Promise<User>;
   hydrateUser: () => Promise<void>;
   signout: () => void;
-  updateProfile: (payload: User) => void;
+  updateProfile: (payload: Pick<User, "name" | "email" | "pushNotifications">) => void;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
   isSignedIn: Boolean(getAccessToken()),
+  isHydrating: true,
   user: null,
   accessToken: getAccessToken(),
   refreshToken: getRefreshToken(),
@@ -34,23 +37,35 @@ export const useAuthStore = create<AuthState>((set) => ({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       });
-
       // userInfo 조회는 apiFetch를 통해 호출되므로
       // access token이 만료되어도 refresh 후 자동 재시도된다
       const me = await getUserInfo();
 
+      const user: User = {
+        name: me.name,
+        email: me.email,
+        pushNotifications: true,
+        userType: me.user_type,
+      };
+
       set({
         isSignedIn: true,
+        isHydrating: false,
         accessToken: getAccessToken(),
         refreshToken: getRefreshToken(),
-        user: {
-          name: me.name,
-          email: me.email,
-          pushNotifications: true,
-        },
+        user,
       });
+
+      return user;
     } catch (error) {
       clearTokens();
+      set({
+        isSignedIn: false,
+        isHydrating: false,
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
       throw error;
     }
   },
@@ -59,9 +74,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     const accessToken = getAccessToken();
     const refreshToken = getRefreshToken();
 
+    set({ isHydrating: true });
+
     if (!accessToken) {
       set({
         isSignedIn: false,
+        isHydrating: false,
         user: null,
         accessToken: null,
         refreshToken: null,
@@ -75,18 +93,21 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({
         isSignedIn: true,
+        isHydrating: false,
         accessToken: getAccessToken(),
         refreshToken: getRefreshToken() ?? refreshToken,
         user: {
           name: me.name,
           email: me.email,
           pushNotifications: true,
+          userType: me.user_type,
         },
       });
     } catch {
       clearTokens();
       set({
         isSignedIn: false,
+        isHydrating: false,
         user: null,
         accessToken: null,
         refreshToken: null,
@@ -98,11 +119,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     clearTokens();
     set({
       isSignedIn: false,
+      isHydrating: false,
       user: null,
       accessToken: null,
       refreshToken: null,
     });
   },
 
-  updateProfile: (payload) => set({ user: payload }),
+  updateProfile: (payload) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...payload } : null,
+    })),
 }));
