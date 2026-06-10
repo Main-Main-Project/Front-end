@@ -9,6 +9,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
 
+
 export function ChatLayout() {
   const { sessions, activeSessionId, selectSession, startNewChat } = useChatStore();
   const { panel, setPanel, documentSearch, setDocumentSearch } = useUiStore();
@@ -25,9 +26,12 @@ export function ChatLayout() {
 
         <div className="px-4 pb-3">
           <div className="grid grid-cols-2 gap-2">
-            <Button variant={panel === "chat" ? "default" : "outline"} size="sm" onClick={() => setPanel("chat")}>채팅</Button>
+            <Button variant={panel === "chat" ? "default" : "outline"} size="sm" onClick={() => setPanel("chat")}>
+              채팅
+            </Button>
             <Button variant={panel === "documents" ? "default" : "outline"} size="sm" onClick={() => setPanel("documents")}>
-              <FileText className="mr-1 size-3" />문서함
+              <FileText className="mr-1 size-3" />
+              문서함
             </Button>
           </div>
 
@@ -48,7 +52,6 @@ export function ChatLayout() {
               <button
                 key={s.id}
                 onClick={() => {
-                  // 세션 클릭 시 채팅 패널로 강제 전환해서 상세 대화를 바로 보여준다.
                   setPanel("chat");
                   selectSession(s.id);
                 }}
@@ -84,6 +87,7 @@ export function ChatLayout() {
               </div>
             )}
           </div>
+
           <Button variant={panel === "mypage" ? "secondary" : "ghost"} size="icon" aria-label="설정" onClick={() => setPanel("mypage")}>
             <Settings2 className="size-4" />
           </Button>
@@ -96,4 +100,3 @@ export function ChatLayout() {
     </div>
   );
 }
-

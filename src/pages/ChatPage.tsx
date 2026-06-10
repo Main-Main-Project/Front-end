@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useChatStore } from "@/stores/chatStore";
 import { useDocumentStore } from "@/stores/documentStore";
+import { showToast } from "@/stores/notificationStore";
 
 export function ChatPage() {
   const { sessions, activeSessionId, draft, setDraft, sendMessage } = useChatStore();
@@ -23,7 +24,19 @@ export function ChatPage() {
         className="hidden"
         multiple
         onChange={(e) => {
-          addUploadedDocuments(e.target.files);
+          const files = e.target.files;
+          addUploadedDocuments(files);
+
+          if (files && files.length > 0) {
+            Array.from(files).forEach((file) => {
+              showToast({
+                title: "문서 업로드 완료",
+                description: `${file.name} 문서가 업로드되었습니다.`,
+                tone: "success",
+              });
+            });
+          }
+
           e.target.value = "";
         }}
       />
@@ -45,7 +58,8 @@ export function ChatPage() {
                   <Paperclip className="size-4" />
                 </Button>
                 <Button onClick={sendMessage}>
-                  <SendHorizontal className="mr-2 size-4" />전송
+                  <SendHorizontal className="mr-2 size-4" />
+                  전송
                 </Button>
               </div>
             </div>
@@ -84,7 +98,8 @@ export function ChatPage() {
                   <Paperclip className="size-4" />
                 </Button>
                 <Button onClick={sendMessage}>
-                  <SendHorizontal className="mr-2 size-4" />전송
+                  <SendHorizontal className="mr-2 size-4" />
+                  전송
                 </Button>
               </div>
             </div>
@@ -94,4 +109,3 @@ export function ChatPage() {
     </div>
   );
 }
-

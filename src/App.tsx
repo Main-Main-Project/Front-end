@@ -14,6 +14,8 @@ import { AdminDocumentsPage } from "@/pages/admin/AdminDocumentsPage";
 import { AdminChatsPage } from "@/pages/admin/AdminChatsPage";
 import { AdminSystemsPage } from "@/pages/admin/AdminSystemsPage";
 import { useUiStore } from "@/stores/uiStore";
+import { useNotificationStore } from "@/stores/notificationStore";
+import { ToastViewport } from "@/components/notifications/ToastViewport";
 
 function ChatRouterPage() {
   const panel = useUiStore((s) => s.panel);
@@ -64,12 +66,13 @@ export default function App() {
   const hydrateUser = useAuthStore((s) => s.hydrateUser);
 
   useEffect(() => {
-    // 앱이 처음 뜰 때 localStorage의 토큰으로 사용자 정보를 복원한다
     hydrateUser();
   }, [hydrateUser]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <ToastViewport />
+
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/signin" element={<SignInPage />} />

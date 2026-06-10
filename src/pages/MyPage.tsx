@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
+import { showToast } from "@/stores/notificationStore";
 
 export function MyPage() {
   const navigate = useNavigate();
@@ -31,15 +31,35 @@ export function MyPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => updateProfile({ name, email, pushNotifications })}>저장</Button>
+          <Button
+            onClick={() => {
+              updateProfile({ name, email, pushNotifications });
+              showToast({
+                title: "저장 완료",
+                description: "계정 정보가 저장되었습니다.",
+                tone: "success",
+              });
+            }}
+          >
+            저장
+          </Button>
           <Button
             variant="secondary"
             onClick={async () => {
               try {
                 await signout();
+                showToast({
+                  title: "로그아웃 완료",
+                  description: "안전하게 로그아웃되었습니다.",
+                  tone: "success",
+                });
                 navigate("/signin");
               } catch (error) {
-                alert(error instanceof Error ? error.message : "로그아웃에 실패했습니다.");
+                showToast({
+                  title: "로그아웃 실패",
+                  description: error instanceof Error ? error.message : "로그아웃에 실패했습니다.",
+                  tone: "error",
+                });
               }
             }}
           >
@@ -63,10 +83,19 @@ export function MyPage() {
                     onClick={async () => {
                       try {
                         await withdraw();
+                        showToast({
+                          title: "회원 탈퇴 완료",
+                          description: "계정이 삭제되었습니다.",
+                          tone: "success",
+                        });
                         navigate("/signin");
                       } catch (error) {
-                        alert(error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.");
-                      }
+                          showToast({
+                            title: "회원 탈퇴 실패",
+                            description: error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.",
+                            tone: "error",
+                          });
+                        }
                     }}
                   >
                     탈퇴 진행
