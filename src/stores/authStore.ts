@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { login as loginApi } from "@/lib/authApi";
+import { deleteUser as deleteUserApi, login as loginApi, logout as logoutApi } from "@/lib/authApi";
 import { getUserInfo } from "@/lib/userApi";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/tokenStorage";
 
@@ -18,7 +18,8 @@ type AuthState = {
   refreshToken: string | null;
   signin: (payload: { email: string; password: string }) => Promise<User>;
   hydrateUser: () => Promise<void>;
-  signout: () => void;
+  signout: () => Promise<void>;
+  withdraw: () => Promise<void>;
   updateProfile: (payload: Pick<User, "name" | "email" | "pushNotifications">) => void;
 };
 
@@ -115,7 +116,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signout: () => {
+  signout: async () => {
+    await logoutApi();
+
+    clearTokens();
+    set({
+      isSignedIn: false,
+      isHydrating: false,
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+    });
+  },
+
+  withdraw: async () => {
+    await deleteUserApi();
+
     clearTokens();
     set({
       isSignedIn: false,

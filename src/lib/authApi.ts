@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/apiClient";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 if (!API_BASE_URL) {
@@ -152,4 +154,32 @@ export async function refresh(refreshToken: string) {
   } catch (error) {
     throw new Error(getNetworkErrorMessage(error, "토큰 재발급에 실패했습니다."));
   }
+}
+
+export async function logout() {
+  const response = await apiFetch("/auth/logout", {
+    method: "POST",
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail ?? "로그아웃에 실패했습니다.");
+  }
+
+  return data;
+}
+
+export async function deleteUser() {
+  const response = await apiFetch("/auth/user", {
+    method: "DELETE",
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail ?? "회원 탈퇴에 실패했습니다.");
+  }
+
+  return data;
 }
