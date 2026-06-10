@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+
 export function MyPage() {
   const navigate = useNavigate();
-  const { user, updateProfile, signout } = useAuthStore();
+  const { user, updateProfile, signout, withdraw } = useAuthStore();
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? true);
@@ -33,39 +34,48 @@ export function MyPage() {
           <Button onClick={() => updateProfile({ name, email, pushNotifications })}>저장</Button>
           <Button
             variant="secondary"
-            onClick={() => {
-              signout();
-              navigate("/signin");
+            onClick={async () => {
+              try {
+                await signout();
+                navigate("/signin");
+              } catch (error) {
+                alert(error instanceof Error ? error.message : "로그아웃에 실패했습니다.");
+              }
             }}
           >
             로그아웃
           </Button>
         </div>
-
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-          <h2 className="text-sm font-semibold text-red-700">Danger Zone</h2>
-          <p className="mt-1 text-xs text-red-600">회원 탈퇴 시 계정 데이터는 복구할 수 없습니다.</p>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button className="mt-3" variant="destructive">회원 탈퇴</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <h3 className="text-lg font-semibold">정말 탈퇴하시겠습니까?</h3>
-              <p className="mt-2 text-sm text-mutedForeground">이 작업은 되돌릴 수 없습니다. 테스트 환경에서는 실제 삭제가 발생하지 않습니다.</p>
-              <div className="mt-5 flex justify-end gap-2">
-                <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    signout();
-                    navigate("/signin");
-                  }}
-                >
-                  탈퇴 진행
-                </AlertDialogAction>
-              </div>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        {user?.userType === "USER" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+            <h2 className="text-sm font-semibold text-red-700">Danger Zone</h2>
+            <p className="mt-1 text-xs text-red-600">회원 탈퇴 시 계정 데이터는 복구할 수 없습니다.</p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="mt-3" variant="destructive">회원 탈퇴</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <h3 className="text-lg font-semibold">정말 탈퇴하시겠습니까?</h3>
+                <p className="mt-2 text-sm text-mutedForeground">이 작업은 되돌릴 수 없습니다.</p>
+                <div className="mt-5 flex justify-end gap-2">
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        await withdraw();
+                        navigate("/signin");
+                      } catch (error) {
+                        alert(error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.");
+                      }
+                    }}
+                  >
+                    탈퇴 진행
+                  </AlertDialogAction>
+                </div>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </Card>
     </div>
   );
