@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import {
   ActivitySquare,
-  Bell,
   FileText,
   LayoutDashboard,
   LogOut,
-  LucideIcon, 
+  LucideIcon,
   Menu,
   MessageSquare,
   Search,
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
+import { showToast } from "@/stores/notificationStore";
 
 type AdminNavItem = {
   to: string;
@@ -51,9 +51,18 @@ export function AdminLayout() {
   const handleSignout = async () => {
     try {
       await signout();
+      showToast({
+        title: "로그아웃 완료",
+        description: "관리자 계정에서 로그아웃되었습니다.",
+        tone: "success",
+      });
       navigate("/signin");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "로그아웃에 실패했습니다.");
+      showToast({
+        title: "로그아웃 실패",
+        description: error instanceof Error ? error.message : "로그아웃에 실패했습니다.",
+        tone: "error",
+      });
     }
   };
 
@@ -148,11 +157,6 @@ export function AdminLayout() {
                 <Input placeholder="사용자, 문서, 로그 검색" className="h-11 rounded-2xl border-slate-200 bg-slate-50 pl-11" />
               </div>
             </div>
-
-            <button className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:text-slate-800">
-              <Bell className="size-5" />
-              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500" />
-            </button>
 
             <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 md:flex">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-700">
