@@ -4,6 +4,9 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { cn } from "@/lib/utils";
 import type { ToastTone } from "@/types/notification";
 
+const TOAST_DURATION_MS = 3800;           // 표시 유지 시간
+const TOAST_ANIMATION_DURATION_MS = 180;  // 등장/퇴장 애니메이션 시간
+
 const toneStyles: Record<ToastTone, string> = {
   success: "border-emerald-200 bg-emerald-50 text-emerald-950",
   error: "border-rose-200 bg-rose-50 text-rose-950",
@@ -38,9 +41,9 @@ function ToastCard({
       if (!exitStartedRef.current) {
         exitStartedRef.current = true;
         startToastExit(id);
-        window.setTimeout(() => removeToast(id), 180);
+        window.setTimeout(() => removeToast(id), TOAST_ANIMATION_DURATION_MS);
       }
-    }, 3800);
+    }, TOAST_DURATION_MS);
 
     return () => window.clearTimeout(timer);
   }, [id, startToastExit, removeToast]);
@@ -49,14 +52,14 @@ function ToastCard({
     if (exitStartedRef.current) return;
     exitStartedRef.current = true;
     startToastExit(id);
-    window.setTimeout(() => removeToast(id), 180);
+    window.setTimeout(() => removeToast(id), TOAST_ANIMATION_DURATION_MS);
   };
 
   return (
     <div
       className={cn(
         "pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-lg shadow-slate-950/10",
-        isClosing ? "animate-[toast-out_180ms_ease-in_forwards]" : "animate-[toast-in_180ms_ease-out]",
+        isClosing ? `animate-[toast-out_${TOAST_ANIMATION_DURATION_MS}ms_ease-in_forwards]` : `animate-[toast-in_${TOAST_ANIMATION_DURATION_MS}ms_ease-out]`,
         toneStyles[tone]
       )}
     >
