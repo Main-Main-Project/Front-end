@@ -48,9 +48,13 @@ export function AdminLayout() {
     return found?.label ?? "대시보드";
   }, [location.pathname]);
 
-  const handleSignout = () => {
-    signout();
-    navigate("/signin");
+  const handleSignout = async () => {
+    try {
+      await signout();
+      navigate("/signin");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "로그아웃에 실패했습니다.");
+    }
   };
 
   return (
