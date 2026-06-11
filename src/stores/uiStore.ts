@@ -7,6 +7,7 @@ type UiState = {
   documentSearch: string;
   setPanel: (panel: Panel) => void;
   setDocumentSearch: (value: string) => void;
+  reset: () => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -16,4 +17,9 @@ export const useUiStore = create<UiState>((set) => ({
   setPanel: (panel) => set({ panel }),
   // 문서함 검색어를 전역으로 보관해 레이아웃/문서 화면에서 함께 사용한다.
   setDocumentSearch: (value) => set({ documentSearch: value }),
+  reset: () =>
+    set({
+      panel: "chat",
+      documentSearch: "",
+    }),
 }));

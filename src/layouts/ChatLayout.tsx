@@ -9,7 +9,6 @@ import { useChatStore } from "@/stores/chatStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
 
-
 export function ChatLayout() {
   const { sessions, activeSessionId, selectSession, startNewChat } = useChatStore();
   const { panel, setPanel, documentSearch, setDocumentSearch } = useUiStore();
@@ -19,17 +18,29 @@ export function ChatLayout() {
     <div className="flex h-screen bg-background">
       <aside className="hidden w-[300px] flex-col border-r border-border bg-card md:flex">
         <div className="p-4">
-          <Button className="w-full justify-start gap-2 rounded-xl" variant="secondary" onClick={startNewChat}>
+          <Button
+            className="w-full justify-start gap-2 rounded-xl"
+            variant="secondary"
+            onClick={startNewChat}
+          >
             <MessageSquarePlus className="size-4" /> 새 대화
           </Button>
         </div>
 
         <div className="px-4 pb-3">
           <div className="grid grid-cols-2 gap-2">
-            <Button variant={panel === "chat" ? "default" : "outline"} size="sm" onClick={() => setPanel("chat")}>
+            <Button
+              variant={panel === "chat" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPanel("chat")}
+            >
               채팅
             </Button>
-            <Button variant={panel === "documents" ? "default" : "outline"} size="sm" onClick={() => setPanel("documents")}>
+            <Button
+              variant={panel === "documents" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPanel("documents")}
+            >
               <FileText className="mr-1 size-3" />
               문서함
             </Button>
@@ -48,19 +59,21 @@ export function ChatLayout() {
 
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-1 pb-4">
-            {sessions.map((s) => (
+            {sessions.map((session) => (
               <button
-                key={s.id}
+                key={session.id}
                 onClick={() => {
                   setPanel("chat");
-                  selectSession(s.id);
+                  void selectSession(session.id);
                 }}
                 className={`w-full rounded-xl px-3 py-3 text-left text-sm transition ${
-                  activeSessionId === s.id ? "bg-accent text-accentForeground" : "text-mutedForeground hover:bg-muted/70 hover:text-foreground"
+                  activeSessionId === session.id
+                    ? "bg-accent text-accentForeground"
+                    : "text-mutedForeground hover:bg-muted/70 hover:text-foreground"
                 }`}
               >
-                <p className="truncate font-medium">{s.title}</p>
-                <p className="mt-1 text-xs opacity-80">{s.updatedAt}</p>
+                <p className="truncate font-medium">{session.title}</p>
+                <p className="mt-1 text-xs opacity-80">{session.updatedAt}</p>
               </button>
             ))}
           </div>
@@ -74,6 +87,7 @@ export function ChatLayout() {
               <UserRound className="size-4" />
             </AvatarFallback>
           </Avatar>
+
           <div className="min-w-0 flex-1">
             {user ? (
               <>
@@ -88,7 +102,12 @@ export function ChatLayout() {
             )}
           </div>
 
-          <Button variant={panel === "mypage" ? "secondary" : "ghost"} size="icon" aria-label="설정" onClick={() => setPanel("mypage")}>
+          <Button
+            variant={panel === "mypage" ? "secondary" : "ghost"}
+            size="icon"
+            aria-label="설정"
+            onClick={() => setPanel("mypage")}
+          >
             <Settings2 className="size-4" />
           </Button>
         </div>
