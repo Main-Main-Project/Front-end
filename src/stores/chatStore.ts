@@ -1,57 +1,376 @@
 ﻿import { create } from "zustand";
-import { mockSessions, type ChatSession } from "@/data/mock";
+import { getMessages, getSessions } from "@/lib/chatApi";
+import { connectChatSocket } from "@/lib/chatSocket";
+import { showToast } from "@/stores/notificationStore";
+
+type UiMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  pending?: boolean;
+};
+
+type UiSession = {
+  id: string;
+  title: string;
+  updatedAt: string;
+};
 
 type ChatState = {
-  sessions: ChatSession[];
+  sessions: UiSession[];
+  messagesBySession: Record<string, UiMessage[]>;
+  pendingNewChatMessages: UiMessage[];
   activeSessionId: string | null;
   draft: string;
+  socket: WebSocket | null;
+  isLoadingSessions: boolean;
+  isLoadingMessages: boolean;
+  isSending: boolean;
+
   setDraft: (draft: string) => void;
+  loadSessions: () => Promise<void>;
+  loadMessages: (sessionId: string) => Promise<void>;
   startNewChat: () => void;
-  selectSession: (id: string) => void;
-  sendMessage: () => void;
+  selectSession: (sessionId: string) => Promise<void>;
+  connectSocket: (sessionId?: string) => Promise<void>;
+  disconnectSocket: () => void;
+  sendMessage: () => Promise<void>;
+  reset: () => void;
 };
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  sessions: mockSessions,
-  activeSessionId: mockSessions[0]?.id ?? null,
+  sessions: [],
+  messagesBySession: {},
+  pendingNewChatMessages: [],
+  activeSessionId: null,
   draft: "",
-  setDraft: (draft) => set({ draft }),
-  startNewChat: () => set({ activeSessionId: null, draft: "" }),
-  selectSession: (id) => set({ activeSessionId: id }),
-  sendMessage: () => {
-    const { draft, activeSessionId, sessions } = get();
-    // 공백 전송은 무시한다.
-    if (!draft.trim()) return;
+  socket: null,
+  isLoadingSessions: false,
+  isLoadingMessages: false,
+  isSending: false,
 
-    const newUserMessage = { id: crypto.randomUUID(), role: "user" as const, content: draft, createdAt: "방금 전" };
-    const newAssistantMessage = {
+  setDraft: (draft) => set({ draft }),
+
+  loadSessions: async () => {
+    set({ isLoadingSessions: true });
+
+    try {
+      const data = await getSessions();
+
+      set({
+        sessions: data.map((item) => ({
+          id: item.session_id,
+          title: item.title,
+          updatedAt: item.updated_at,
+        })),
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "세션 목록을 불러오지 못했습니다.";
+
+      showToast({
+        title: "채팅 세션 조회 실패",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      set({ isLoadingSessions: false });
+    }
+  },
+
+  loadMessages: async (sessionId) => {
+    set({ isLoadingMessages: true });
+
+    try {
+      const data = await getMessages(sessionId);
+
+      const uiMessages = data.flatMap((item) => {
+        const messages: UiMessage[] = [
+          {
+            id: `${item.message_id}-question`,
+            role: "user",
+            content: item.question,
+            createdAt: item.question_at,
+          },
+        ];
+
+        if (item.answer) {
+          messages.push({
+            id: `${item.message_id}-answer`,
+            role: "assistant",
+            content: item.answer,
+            createdAt: item.answer_at ?? item.question_at,
+          });
+        }
+
+        return messages;
+      });
+
+      set((state) => ({
+        messagesBySession: {
+          ...state.messagesBySession,
+          [sessionId]: uiMessages,
+        },
+      }));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "메시지를 불러오지 못했습니다.";
+
+      showToast({
+        title: "메시지 조회 실패",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      set({ isLoadingMessages: false });
+    }
+  },
+
+  startNewChat: () => {
+    const { socket } = get();
+    socket?.close();
+
+    set({
+      activeSessionId: null,
+      pendingNewChatMessages: [],
+      draft: "",
+      socket: null,
+      isSending: false,
+    });
+  },
+
+  selectSession: async (sessionId) => {
+    const { disconnectSocket, loadMessages, connectSocket } = get();
+
+    disconnectSocket();
+    set({ activeSessionId: sessionId });
+
+    await loadMessages(sessionId);
+    await connectSocket(sessionId);
+  },
+
+  connectSocket: async (sessionId) => {
+    const { disconnectSocket } = get();
+
+    disconnectSocket();
+
+    try {
+      const socket = connectChatSocket(sessionId);
+
+      await new Promise<void>((resolve, reject) => {
+        socket.onopen = () => {
+          set({ socket });
+          resolve();
+        };
+
+        socket.onerror = () => {
+          reject(new Error("웹소켓 연결 중 문제가 발생했습니다."));
+        };
+      });
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "session_created") {
+            set((state) => ({
+              activeSessionId: data.session_id,
+              sessions: [
+                {
+                  id: data.session_id,
+                  title: data.title,
+                  updatedAt: data.created_at ?? new Date().toISOString(),
+                },
+                ...state.sessions.filter((item) => item.id !== data.session_id),
+              ],
+              messagesBySession: {
+                ...state.messagesBySession,
+                [data.session_id]: state.pendingNewChatMessages.map((message) => ({
+                  ...message,
+                  pending: false,
+                })),
+              },
+              pendingNewChatMessages: [],
+            }));
+            return;
+          }
+
+          if (data.type === "message") {
+            set((state) => {
+              const targetSessionId = data.session_id ?? state.activeSessionId;
+
+              if (!targetSessionId) {
+                return { isSending: false };
+              }
+
+              const existingMessages = state.messagesBySession[targetSessionId] ?? [];
+              const normalizedMessages = existingMessages.map((message) =>
+                message.pending ? { ...message, pending: false } : message
+              );
+
+              const hasSameQuestion = normalizedMessages.some(
+                (message) =>
+                  message.role === "user" &&
+                  message.content === data.question
+              );
+
+              return {
+                messagesBySession: {
+                  ...state.messagesBySession,
+                  [targetSessionId]: [
+                    ...normalizedMessages,
+                    ...(!hasSameQuestion
+                      ? [
+                          {
+                            id: `${data.message_id}-question`,
+                            role: "user" as const,
+                            content: data.question ?? "",
+                            createdAt: data.question_at ?? new Date().toISOString(),
+                          },
+                        ]
+                      : []),
+                    {
+                      id: `${data.message_id}-answer`,
+                      role: "assistant" as const,
+                      content: data.answer ?? "",
+                      createdAt: data.answer_at ?? new Date().toISOString(),
+                    },
+                  ],
+                },
+                sessions: state.sessions.map((session) =>
+                  session.id === targetSessionId
+                    ? {
+                        ...session,
+                        updatedAt:
+                          data.answer_at ??
+                          data.question_at ??
+                          new Date().toISOString(),
+                      }
+                    : session
+                ),
+                isSending: false,
+              };
+            });
+            return;
+          }
+
+          if (data.type === "error") {
+            set({ isSending: false });
+
+            showToast({
+              title: "채팅 오류",
+              description: data.message ?? "채팅 중 오류가 발생했습니다.",
+              tone: "error",
+            });
+          }
+        } catch {
+          set({ isSending: false });
+
+          showToast({
+            title: "응답 처리 실패",
+            description: "웹소켓 응답을 해석하지 못했습니다.",
+            tone: "error",
+          });
+        }
+      };
+
+      socket.onclose = () => {
+        set((state) => (state.socket === socket ? { socket: null } : state));
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "웹소켓 연결에 실패했습니다.";
+
+      set({ socket: null, isSending: false });
+
+      showToast({
+        title: "웹소켓 연결 실패",
+        description: message,
+        tone: "error",
+      });
+    }
+  },
+
+  disconnectSocket: () => {
+    const { socket } = get();
+    socket?.close();
+    set({ socket: null });
+  },
+  
+  reset: () => {
+    const { socket } = get();
+    socket?.close();
+
+    set({
+      sessions: [],
+      messagesBySession: {},
+      pendingNewChatMessages: [],
+      activeSessionId: null,
+      draft: "",
+      socket: null,
+      isLoadingSessions: false,
+      isLoadingMessages: false,
+      isSending: false,
+    });
+  },
+
+  sendMessage: async () => {
+    const { draft, activeSessionId, socket, connectSocket } = get();
+    const text = draft.trim();
+
+    if (!text) return;
+
+    const userMessage: UiMessage = {
       id: crypto.randomUUID(),
-      role: "assistant" as const,
-      content: "현재는 Mock 응답입니다. 백엔드 연동 전 UI/UX 검증용 메시지입니다.",
-      createdAt: "방금 전",
+      role: "user",
+      content: text,
+      createdAt: new Date().toISOString(),
+      pending: true,
     };
 
-    if (!activeSessionId) {
-      // 아직 세션이 없으면 첫 메시지로 새 세션을 생성한다.
-      const created: ChatSession = {
-        id: crypto.randomUUID(),
-        title: draft.slice(0, 18),
-        updatedAt: "방금 전",
-        messages: [newUserMessage, newAssistantMessage],
-      };
-      set({ sessions: [created, ...sessions], activeSessionId: created.id, draft: "" });
+    if (activeSessionId) {
+      set((state) => ({
+        draft: "",
+        isSending: true,
+        messagesBySession: {
+          ...state.messagesBySession,
+          [activeSessionId]: [
+            ...(state.messagesBySession[activeSessionId] ?? []),
+            userMessage,
+          ],
+        },
+      }));
+    } else {
+      set((state) => ({
+        draft: "",
+        isSending: true,
+        pendingNewChatMessages: [...state.pendingNewChatMessages, userMessage],
+      }));
+    }
+
+    let currentSocket = socket;
+
+    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+      await connectSocket(activeSessionId ?? undefined);
+      currentSocket = get().socket;
+    }
+
+    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+      set({ isSending: false });
+
+      showToast({
+        title: "메시지 전송 실패",
+        description: "웹소켓 연결이 아직 준비되지 않았습니다.",
+        tone: "error",
+      });
       return;
     }
 
-    // 기존 세션이면 활성 세션의 메시지 배열만 append 한다.
-    set({
-      sessions: sessions.map((s) =>
-        s.id === activeSessionId
-          ? { ...s, updatedAt: "방금 전", messages: [...s.messages, newUserMessage, newAssistantMessage] }
-          : s
-      ),
-      draft: "",
-    });
+    currentSocket.send(
+      JSON.stringify({
+        message: text,
+      })
+    );
   },
 }));
-
