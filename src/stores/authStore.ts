@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { deleteUser as deleteUserApi, login as loginApi, logout as logoutApi } from "@/lib/authApi";
 import { getUserInfo } from "@/lib/userApi";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/tokenStorage";
+import { useChatStore } from "@/stores/chatStore";
+import { useUiStore } from "@/stores/uiStore";
 
 type User = {
   name: string;
@@ -31,6 +33,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshToken: getRefreshToken(),
 
   signin: async ({ email, password }) => {
+    useChatStore.getState().reset();
+    useUiStore.getState().reset();
+
     const tokens = await loginApi({ email, password });
 
     try {
@@ -78,6 +83,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isHydrating: true });
 
     if (!accessToken) {
+      useChatStore.getState().reset();
+      useUiStore.getState().reset();
+
       set({
         isSignedIn: false,
         isHydrating: false,
@@ -105,6 +113,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
       });
     } catch {
+      useChatStore.getState().reset();
+      useUiStore.getState().reset();
       clearTokens();
       set({
         isSignedIn: false,
@@ -119,6 +129,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   signout: async () => {
     await logoutApi();
 
+    useChatStore.getState().reset();
+    useUiStore.getState().reset();
+
     clearTokens();
     set({
       isSignedIn: false,
@@ -131,6 +144,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   withdraw: async () => {
     await deleteUserApi();
+
+    useChatStore.getState().reset();
+    useUiStore.getState().reset();
 
     clearTokens();
     set({
