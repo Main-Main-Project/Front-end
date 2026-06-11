@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef } from "react";
+﻿import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Paperclip, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,6 +31,8 @@ export function ChatPage() {
 
   const addUploadedDocuments = useDocumentStore((s) => s.addUploadedDocuments);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedFiles, setDraggedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     void loadSessions();
@@ -43,34 +46,109 @@ export function ChatPage() {
   // 숨겨진 file input을 버튼으로 트리거하기 위한 헬퍼.
   const triggerUpload = () => fileInputRef.current?.click();
 
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    addUploadedDocuments(files);
+
+    Array.from(files).forEach((file) => {
+      showToast({
+        title: "문서 업로드 완료",
+        description: `${file.name} 문서가 업로드되었습니다.`,
+        tone: "success",
+      });
+    });
+  };
+
+  const hasFiles = (e: React.DragEvent<HTMLDivElement>) => {
+    return Array.from(e.dataTransfer.types).includes("Files");
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!hasFiles(e)) return;
+
+    setIsDragging(true);
+    setDraggedFiles(Array.from(e.dataTransfer.files ?? []));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!hasFiles(e)) return;
+
+    e.dataTransfer.dropEffect = "copy";
+    setIsDragging(true);
+    setDraggedFiles(Array.from(e.dataTransfer.files ?? []));
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setIsDragging(false);
+      setDraggedFiles([]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!hasFiles(e)) return;
+
+    setIsDragging(false);
+    setDraggedFiles([]);
+    handleFiles(e.dataTransfer.files);
+  };
+
   const handleSendMessage = async () => {
     await sendMessage();
   };
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className={cn("relative flex h-full w-full flex-col transition-colors",
+        isDragging && "bg-primary/5"
+      )}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <input
         ref={fileInputRef}
         type="file"
         className="hidden"
         multiple
         onChange={(e) => {
-          const files = e.target.files;
-          addUploadedDocuments(files);
-
-          if (files && files.length > 0) {
-            Array.from(files).forEach((file) => {
-              showToast({
-                title: "문서 업로드 완료",
-                description: `${file.name} 문서가 업로드되었습니다.`,
-                tone: "success",
-              });
-            });
-          }
-
+          handleFiles(e.target.files);
           e.target.value = "";
         }}
       />
+      {isDragging && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="mx-4 flex w-full max-w-md flex-col items-center rounded-3xl border border-white/10 bg-neutral-900 px-10 py-12 text-center shadow-2xl">
+            <div className="mb-5 flex size-20 items-center justify-center rounded-3xl bg-primary/15">
+              <i className="icofont-file-document text-6xl text-primary" />
+            </div>
+
+            <h3 className="text-3xl font-semibold text-white">무엇이든 추가하세요</h3>
+            <p className="mt-3 text-base text-white/70">
+              대화에 추가하려면 여기에 파일을 드롭하세요
+            </p>
+
+            {draggedFiles.length > 0 && (
+              <div className="mt-6 w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                <p className="truncate text-sm font-medium text-white">
+                  {draggedFiles[0].name}
+                </p>
+                {draggedFiles.length > 1 && (
+                  <p className="mt-1 text-xs text-white/60">
+                    외 {draggedFiles.length - 1}개 파일
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {!activeSession && messages.length === 0 ? (
         // 활성 세션이 없으면 "첫 질문" 빈 상태 화면을 보여준다.
@@ -90,6 +168,7 @@ export function ChatPage() {
                 placeholder="법률 질문이나 문서 검토 요청을 입력하세요."
                 className="min-h-14 border-0 bg-transparent"
               />
+              
               <div className="mt-2 flex items-center justify-between">
                 <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드">
                   <Paperclip className="size-4" />
