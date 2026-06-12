@@ -46,7 +46,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init.headers ?? {}),
     },
@@ -67,7 +67,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   return fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       Authorization: `Bearer ${newAccessToken}`,
       ...(init.headers ?? {}),
     },

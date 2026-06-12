@@ -4,6 +4,7 @@ import { Paperclip, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { createSession, uploadDocument } from "@/lib/chatApi";
 import { useChatStore } from "@/stores/chatStore";
 import { useDocumentStore } from "@/stores/documentStore";
 import { showToast } from "@/stores/notificationStore";
@@ -27,12 +28,15 @@ export function ChatPage() {
     messagesBySession,
     pendingNewChatMessages,
     isSending,
+    connectSocket,
+    registerSession,
   } = useChatStore();
 
-  const addUploadedDocuments = useDocumentStore((s) => s.addUploadedDocuments);
+  const addUploadedDocument = useDocumentStore((s) => s.addUploadedDocument);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedFiles, setDraggedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     void loadSessions();
@@ -46,18 +50,47 @@ export function ChatPage() {
   // 숨겨진 file input을 버튼으로 트리거하기 위한 헬퍼.
   const triggerUpload = () => fileInputRef.current?.click();
 
-  const handleFiles = (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    addUploadedDocuments(files);
+    try {
+      setIsUploading(true);
 
-    Array.from(files).forEach((file) => {
+      let sessionId = activeSessionId;
+
+      if (!sessionId) {
+        const session = await createSession();
+
+        registerSession({
+          id: session.session_id,
+          title: session.title,
+          updatedAt: session.created_at,
+        });
+
+        sessionId = session.session_id;
+        await connectSocket(sessionId);
+      }
+
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadDocument(sessionId, file);
+        addUploadedDocument(uploaded);
+
+        showToast({
+          title: "문서 업로드 완료",
+          description: `${uploaded.file_name} 문서가 업로드되었습니다.`,
+          tone: "success",
+        });
+      }
+    } catch (error) {
       showToast({
-        title: "문서 업로드 완료",
-        description: `${file.name} 문서가 업로드되었습니다.`,
-        tone: "success",
+        title: "문서 업로드 실패",
+        description:
+          error instanceof Error ? error.message : "문서 업로드 중 오류가 발생했습니다.",
+        tone: "error",
       });
-    });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const hasFiles = (e: React.DragEvent<HTMLDivElement>) => {
@@ -170,10 +203,10 @@ export function ChatPage() {
               />
               
               <div className="mt-2 flex items-center justify-between">
-                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드">
+                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isUploading}>
                   <Paperclip className="size-4" />
                 </Button>
-                <Button onClick={handleSendMessage} disabled={isSending}>
+                <Button onClick={handleSendMessage} disabled={isSending || isUploading}>
                   <SendHorizontal className="mr-2 size-4" />
                   전송
                 </Button>
@@ -223,10 +256,10 @@ export function ChatPage() {
                 className="min-h-12 border-0 bg-transparent"
               />
               <div className="mt-2 flex items-center justify-between">
-                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드">
+                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isUploading}>
                   <Paperclip className="size-4" />
                 </Button>
-                <Button onClick={handleSendMessage} disabled={isSending}>
+                <Button onClick={handleSendMessage} disabled={isSending || isUploading}>
                   <SendHorizontal className="mr-2 size-4" />
                   전송
                 </Button>
