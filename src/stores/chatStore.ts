@@ -33,6 +33,7 @@ type ChatState = {
   loadMessages: (sessionId: string) => Promise<void>;
   startNewChat: () => void;
   selectSession: (sessionId: string) => Promise<void>;
+  registerSession: (session: UiSession) => void;
   connectSocket: (sessionId?: string) => Promise<void>;
   disconnectSocket: () => void;
   sendMessage: () => Promise<void>;
@@ -125,6 +126,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } finally {
       set({ isLoadingMessages: false });
     }
+  },
+
+    registerSession: (session) => {
+    const { socket } = get();
+    socket?.close();
+
+    set((state) => ({
+      activeSessionId: session.id,
+      socket: null,
+      sessions: [session, ...state.sessions.filter((item) => item.id !== session.id)],
+      messagesBySession: {
+        ...state.messagesBySession,
+        [session.id]: state.messagesBySession[session.id] ?? [],
+      },
+      pendingNewChatMessages: [],
+      isSending: false,
+    }));
   },
 
   startNewChat: () => {
