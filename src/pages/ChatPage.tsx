@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Paperclip, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function ChatPage() {
     setDraft,
     sendMessage,
     loadSessions,
+    selectSession,
     messagesBySession,
     pendingNewChatMessages,
     isSending,
@@ -37,10 +39,25 @@ export function ChatPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [draggedFiles, setDraggedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const navigate = useNavigate();
+  const { sessionId } = useParams<{ sessionId: string }>();
 
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    if (activeSessionId === sessionId) return;
+
+    void selectSession(sessionId);
+  }, [sessionId, activeSessionId, selectSession]);
+
+  useEffect(() => {
+    if (!activeSessionId || sessionId) return;
+
+    navigate(`/chat/${activeSessionId}`, { replace: true });
+  }, [activeSessionId, sessionId, navigate]);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const messages = activeSessionId
