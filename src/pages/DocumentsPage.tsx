@@ -17,14 +17,14 @@ const statusVariant: Record<DocumentStatus, "default" | "success" | "warning" | 
 
 export function DocumentsPage() {
   const documents = useDocumentStore((s) => s.documents);
-  const documentSearch = useUiStore((s) => s.documentSearch);
+  const documentSearchQuery = useUiStore((s) => s.documentSearchQuery);
 
   // 검색어가 있으면 파일명/요약 기준으로 실시간 필터링한다.
   const filteredDocuments = useMemo(() => {
-    const q = documentSearch.trim().toLowerCase();
+    const q = documentSearchQuery.trim().toLowerCase();
     if (!q) return documents;
     return documents.filter((doc) => doc.name.toLowerCase().includes(q) || doc.summary.toLowerCase().includes(q));
-  }, [documents, documentSearch]);
+  }, [documents, documentSearchQuery]);
 
   const [selected, setSelected] = useState<DocItem | null>(filteredDocuments[0] ?? null);
 

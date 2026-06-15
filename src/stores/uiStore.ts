@@ -6,12 +6,14 @@ type SidebarMode = "expanded" | "collapsed";
 
 type UiState = {
   panel: Panel;
-  documentSearch: string;
+  chatSearchQuery: string;
+  documentSearchQuery: string;
   sidebarMode: SidebarMode;
   recentChatsOpen: boolean;
   searchOverlayOpen: boolean;
   setPanel: (panel: Panel) => void;
-  setDocumentSearch: (value: string) => void;
+  setChatSearchQuery: (value: string) => void;
+  setDocumentSearchQuery: (value: string) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   toggleSidebar: () => void;
   setRecentChatsOpen: (open: boolean) => void;
@@ -23,13 +25,15 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       panel: "chat",
-      documentSearch: "",
+      chatSearchQuery: "",
+      documentSearchQuery: "",
       sidebarMode: "expanded",
       recentChatsOpen: false,
       searchOverlayOpen: false,
 
       setPanel: (panel) => set({ panel }),
-      setDocumentSearch: (value) => set({ documentSearch: value }),
+      setChatSearchQuery: (value) => set({ chatSearchQuery: value }),
+      setDocumentSearchQuery: (value) => set({ documentSearchQuery: value }),
       setSidebarMode: (mode) => set({ sidebarMode: mode }),
       toggleSidebar: () =>
         set((state) => ({
@@ -41,7 +45,8 @@ export const useUiStore = create<UiState>()(
       reset: () =>
         set({
           panel: "chat",
-          documentSearch: "",
+          chatSearchQuery: "",
+          documentSearchQuery: "",
           sidebarMode: "expanded",
           recentChatsOpen: false,
           searchOverlayOpen: false,

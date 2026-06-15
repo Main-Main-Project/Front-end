@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -40,8 +39,8 @@ export function ChatLayout() {
   const {
     panel,
     setPanel,
-    documentSearch,
-    setDocumentSearch,
+    chatSearchQuery,
+    setChatSearchQuery,
     sidebarMode,
     toggleSidebar,
     recentChatsOpen,
@@ -60,7 +59,7 @@ export function ChatLayout() {
   const recentSessions = sessions.slice(0, 10);
 
   const searchedSessions = sessions.filter((session) =>
-  session.title.toLowerCase().includes(documentSearch.trim().toLowerCase())
+    session.title.toLowerCase().includes(chatSearchQuery.trim().toLowerCase())
   );
 
   const today = new Date();
@@ -233,15 +232,14 @@ export function ChatLayout() {
             </Button>
           </div>
 
-          <div className="relative mt-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-mutedForeground" />
-            <Input
-              value={documentSearch}
-              onChange={(e) => setDocumentSearch(e.target.value)}
-              placeholder="문서 검색"
-              className="h-9 rounded-lg pl-9"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setSearchOverlayOpen(true)}
+            className="relative mt-3 flex h-9 w-full items-center rounded-lg border border-input bg-background px-3 text-left text-sm text-mutedForeground transition hover:bg-muted"
+          >
+            <Search className="mr-2 size-4 shrink-0" />
+            <span className="truncate">채팅 검색</span>
+          </button>
         </div>
 
         <div
@@ -352,8 +350,8 @@ export function ChatLayout() {
               <Search className="size-4 text-white/60" />
               <input
                 autoFocus
-                value={documentSearch}
-                onChange={(e) => setDocumentSearch(e.target.value)}
+                value={chatSearchQuery}
+                onChange={(e) => setChatSearchQuery(e.target.value)}
                 placeholder="채팅 검색..."
                 className="flex-1 bg-transparent text-lg outline-none placeholder:text-white/35"
               />
