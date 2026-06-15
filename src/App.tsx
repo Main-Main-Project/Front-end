@@ -80,6 +80,7 @@ export default function App() {
 
         <Route path="/chat" element={<ProtectedChatRoute />}>
           <Route index element={<ChatRouterPage />} />
+          <Route path=":sessionId" element={<ChatRouterPage />} />
         </Route>
 
         <Route path="/admin" element={<ProtectedAdminRoute />}>

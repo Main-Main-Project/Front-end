@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import {
   Search,
@@ -50,6 +50,7 @@ export function ChatLayout() {
     setSearchOverlayOpen,
   } = useUiStore();
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
 
   const collapsed = sidebarMode === "collapsed";
   const [logoHovered, setLogoHovered] = useState(false);
@@ -82,6 +83,15 @@ export function ChatLayout() {
     const goToFreshChat = () => {
       setPanel("chat");
       startNewChat();
+      navigate("/chat");
+    };
+
+    const openSession = (sessionId: string) => {
+      setPanel("chat");
+      setRecentChatsOpen(false);
+      setSearchOverlayOpen(false);
+      navigate(`/chat/${sessionId}`);
+      void selectSession(sessionId);
     };
 
     useEffect(() => {
@@ -245,10 +255,7 @@ export function ChatLayout() {
               {sessions.map((session) => (
                 <button
                   key={session.id}
-                  onClick={() => {
-                    setPanel("chat");
-                    void selectSession(session.id);
-                  }}
+                  onClick={() => openSession(session.id)}
                   className={`w-full rounded-xl px-3 py-3 text-left text-sm transition ${
                     activeSessionId === session.id
                       ? "bg-accent text-accentForeground"
@@ -319,11 +326,7 @@ export function ChatLayout() {
             {recentSessions.map((session) => (
               <button
                 key={session.id}
-                onClick={() => {
-                  setPanel("chat");
-                  void selectSession(session.id);
-                  setRecentChatsOpen(false);
-                }}
+                onClick={() => openSession(session.id)}
                 className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
               >
                 <p className="truncate">{session.title}</p>
@@ -381,11 +384,7 @@ export function ChatLayout() {
                     {todaySessions.map((session) => (
                       <button
                         key={session.id}
-                        onClick={() => {
-                          setPanel("chat");
-                          void selectSession(session.id);
-                          setSearchOverlayOpen(false);
-                        }}
+                        onClick={() => openSession(session.id)}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm hover:bg-white/5"
                       >
                         <MessageCircle className="size-5 shrink-0 text-white/80" />
@@ -403,11 +402,7 @@ export function ChatLayout() {
                     {yesterdaySessions.map((session) => (
                       <button
                         key={session.id}
-                        onClick={() => {
-                          setPanel("chat");
-                          void selectSession(session.id);
-                          setSearchOverlayOpen(false);
-                        }}
+                        onClick={() => openSession(session.id)}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm hover:bg-white/5"
                       >
                         <MessageCircle className="size-5 shrink-0 text-white/80" />
@@ -425,11 +420,7 @@ export function ChatLayout() {
                     {last7DaysSessions.map((session) => (
                       <button
                         key={session.id}
-                        onClick={() => {
-                          setPanel("chat");
-                          void selectSession(session.id);
-                          setSearchOverlayOpen(false);
-                        }}
+                        onClick={() => openSession(session.id)}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm hover:bg-white/5"
                       >
                         <MessageCircle className="size-5 shrink-0 text-white/80" />
