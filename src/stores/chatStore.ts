@@ -17,6 +17,11 @@ type UiSession = {
   updatedAt: string;
 };
 
+const sortSessionsByUpdatedAt = (sessions: UiSession[]) =>
+  [...sessions].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+
 type ChatState = {
   sessions: UiSession[];
   messagesBySession: Record<string, UiMessage[]>;
@@ -60,11 +65,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const data = await getSessions();
 
       set({
-        sessions: data.map((item) => ({
-          id: item.session_id,
-          title: item.title,
-          updatedAt: item.updated_at,
-        })),
+        sessions: sortSessionsByUpdatedAt(
+          data.map((item) => ({
+            id: item.session_id,
+            title: item.title,
+            updatedAt: item.updated_at,
+          }))
+        ),
       });
     } catch (error) {
       const message =
@@ -132,17 +139,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { socket } = get();
     socket?.close();
 
-    set((state) => ({
-      activeSessionId: session.id,
-      socket: null,
-      sessions: [session, ...state.sessions.filter((item) => item.id !== session.id)],
-      messagesBySession: {
-        ...state.messagesBySession,
-        [session.id]: state.messagesBySession[session.id] ?? [],
-      },
-      pendingNewChatMessages: [],
-      isSending: false,
-    }));
+    set((state) => {
+      const nextSessions = [
+        session,
+        ...state.sessions.filter((item) => item.id !== session.id),
+      ];
+
+      return {
+        activeSessionId: session.id,
+        socket: null,
+        sessions: sortSessionsByUpdatedAt(nextSessions),
+        messagesBySession: {
+          ...state.messagesBySession,
+          [session.id]: state.messagesBySession[session.id] ?? [],
+        },
+        pendingNewChatMessages: [],
+        isSending: false,
+      };
+    });
   },
 
   startNewChat: () => {
@@ -192,25 +206,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const data = JSON.parse(event.data);
 
           if (data.type === "session_created") {
-            set((state) => ({
-              activeSessionId: data.session_id,
-              sessions: [
+            set((state) => {
+              const nextSessions = [
                 {
                   id: data.session_id,
                   title: data.title,
                   updatedAt: data.created_at ?? new Date().toISOString(),
                 },
                 ...state.sessions.filter((item) => item.id !== data.session_id),
-              ],
-              messagesBySession: {
-                ...state.messagesBySession,
-                [data.session_id]: state.pendingNewChatMessages.map((message) => ({
-                  ...message,
-                  pending: false,
-                })),
-              },
-              pendingNewChatMessages: [],
-            }));
+              ];
+
+              return {
+                activeSessionId: data.session_id,
+                sessions: sortSessionsByUpdatedAt(nextSessions),
+                messagesBySession: {
+                  ...state.messagesBySession,
+                  [data.session_id]: state.pendingNewChatMessages.map((message) => ({
+                    ...message,
+                    pending: false,
+                  })),
+                },
+                pendingNewChatMessages: [],
+              };
+            });
             return;
           }
 
@@ -231,6 +249,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 (message) =>
                   message.role === "user" &&
                   message.content === data.question
+              );
+
+              const nextSessions = state.sessions.map((session) =>
+                session.id === targetSessionId
+                  ? {
+                      ...session,
+                      updatedAt:
+                        data.answer_at ??
+                        data.question_at ??
+                        new Date().toISOString(),
+                    }
+                  : session
               );
 
               return {
@@ -256,17 +286,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                     },
                   ],
                 },
-                sessions: state.sessions.map((session) =>
-                  session.id === targetSessionId
-                    ? {
-                        ...session,
-                        updatedAt:
-                          data.answer_at ??
-                          data.question_at ??
-                          new Date().toISOString(),
-                      }
-                    : session
-                ),
+                sessions: sortSessionsByUpdatedAt(nextSessions),
                 isSending: false,
               };
             });
