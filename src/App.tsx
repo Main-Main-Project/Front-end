@@ -16,6 +16,7 @@ import { AdminSystemsPage } from "@/pages/admin/AdminSystemsPage";
 import { useUiStore } from "@/stores/uiStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { ToastViewport } from "@/components/notifications/ToastViewport";
+import { KakaoCallbackPage } from "@/pages/KakaoCallbackPage";
 
 function ChatRouterPage() {
   const panel = useUiStore((s) => s.panel);
@@ -77,6 +78,8 @@ export default function App() {
         <Route path="/" element={<RootRedirect />} />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        
+        <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
 
         <Route path="/chat" element={<ProtectedChatRoute />}>
           <Route index element={<ChatRouterPage />} />
