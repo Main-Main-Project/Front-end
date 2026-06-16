@@ -99,6 +99,42 @@ export async function login(payload: { email: string; password: string }) {
   }
 }
 
+export async function getKakaoLoginUrl() {
+  const response = await fetch(`${API_BASE_URL}/auth/kakao/login-url`);
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail ?? "카카오 로그인 URL 조회 실패");
+  }
+
+  return data.login_url as string;
+}
+
+export type KakaoLoginResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  is_new_user: boolean;
+};
+
+export async function kakaoLogin(code: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/kakao/callback`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail ?? "카카오 로그인 실패");
+  }
+
+  return data as KakaoLoginResponse;
+}
+
 export async function signup(payload: SignupRequest) {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {

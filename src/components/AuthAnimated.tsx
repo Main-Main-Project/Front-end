@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftCircle, ArrowRightCircle, LogIn, UserPlus } from "lucide-react";
-import { signup as signupApi } from "@/lib/authApi";
+import { signup as signupApi, getKakaoLoginUrl } from "@/lib/authApi";
 import { useAuthStore } from "@/stores/authStore";
 import "@/components/auth-animated.css";
 
@@ -75,6 +75,17 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
       setLoginError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleKakaoMove = async () => {
+    try {
+      const loginUrl = await getKakaoLoginUrl();
+      window.location.href = loginUrl;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "카카오 로그인 이동 실패";
+      setLoginError(message);
+      setSignupError(message);
     }
   };
 
@@ -174,7 +185,12 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
                   <path fill="#FBBC05" d="M12 6.8c1.4 0 2.6.5 3.5 1.3l2.6-2.6C16.8 4.2 14.6 3 12 3 8.1 3 4.8 5.2 3.1 8.8l3.2 2.5c.8-2.5 3-4.5 5.7-4.5z" />
                 </svg>
               </button>
-              <button type="button" className="social-icon kakao" aria-label="Kakao login">
+              <button
+                type="button"
+                className="social-icon kakao"
+                aria-label="Kakao login"
+                onClick={handleKakaoMove}
+              >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" fill="#FEE500" />
                   <path fill="#191919" d="M12 7.1c-3.1 0-5.6 1.9-5.6 4.2 0 1.6 1.2 3 2.9 3.7l-.6 2.3 2.5-1.8c.3 0 .5.1.8.1 3.1 0 5.6-1.9 5.6-4.2S15.1 7.1 12 7.1z" />
@@ -238,7 +254,12 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
                   <path fill="#FBBC05" d="M12 6.8c1.4 0 2.6.5 3.5 1.3l2.6-2.6C16.8 4.2 14.6 3 12 3 8.1 3 4.8 5.2 3.1 8.8l3.2 2.5c.8-2.5 3-4.5 5.7-4.5z" />
                 </svg>
               </button>
-              <button type="button" className="social-icon kakao" aria-label="Kakao signup">
+              <button
+                type="button"
+                className="social-icon kakao"
+                aria-label="Kakao signup"
+                onClick={handleKakaoMove}
+              >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" fill="#FEE500" />
                   <path fill="#191919" d="M12 7.1c-3.1 0-5.6 1.9-5.6 4.2 0 1.6 1.2 3 2.9 3.7l-.6 2.3 2.5-1.8c.3 0 .5.1.8.1 3.1 0 5.6-1.9 5.6-4.2S15.1 7.1 12 7.1z" />
