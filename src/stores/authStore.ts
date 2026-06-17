@@ -46,13 +46,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       // userInfo 조회는 apiFetch를 통해 호출되므로
       // access token이 만료되어도 refresh 후 자동 재시도된다
-      const me = await getUserInfo();
+      const UserInfo = await getUserInfo();
 
       const user: User = {
-        name: me.name,
-        email: me.email,
+        name: UserInfo.name,
+        email: UserInfo.email,
         pushNotifications: true,
-        userType: me.user_type,
+        userType: UserInfo.user_type,
       };
 
       set({
