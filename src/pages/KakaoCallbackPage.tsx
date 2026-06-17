@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { kakaoLogin } from "@/lib/authApi";
-import { setTokens } from "@/lib/tokenStorage";
-import { getUserInfo } from "@/lib/userApi";
+import { useAuthStore } from "@/stores/authStore";
 
 export function KakaoCallbackPage() {
     const navigate = useNavigate();
     const [error, setError] = useState("");
     const calledRef = useRef(false);
+    const completeSocialSignin = useAuthStore((s) => s.completeSocialSignin);
 
     useEffect(() => {
         if (calledRef.current) return;
@@ -25,22 +25,21 @@ export function KakaoCallbackPage() {
         try {
             const result = await kakaoLogin(code);
 
-            setTokens({
+            const user = await completeSocialSignin({
             accessToken: result.access_token,
             refreshToken: result.refresh_token,
             });
 
             window.history.replaceState({}, document.title, "/auth/kakao/callback");
 
-            const me = await getUserInfo();
-            navigate(me.user_type === "ADMIN" ? "/admin" : "/chat", { replace: true });
+            navigate(user.userType === "ADMIN" ? "/admin" : "/chat", { replace: true });
         } catch (err) {
             setError(err instanceof Error ? err.message : "카카오 로그인 처리 실패");
         }
         };
 
         void run();
-    }, [navigate]);
+    }, [completeSocialSignin,navigate]);
 
     return (
         <div className="flex min-h-screen items-center justify-center">

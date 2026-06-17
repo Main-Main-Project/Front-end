@@ -19,6 +19,7 @@ type AuthState = {
   accessToken: string | null;
   refreshToken: string | null;
   signin: (payload: { email: string; password: string }) => Promise<User>;
+  completeSocialSignin: (tokens: { accessToken: string; refreshToken: string }) => Promise<User>;
   hydrateUser: () => Promise<void>;
   signout: () => Promise<void>;
   withdraw: () => Promise<void>;
@@ -45,6 +46,47 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       // userInfo 조회는 apiFetch를 통해 호출되므로
       // access token이 만료되어도 refresh 후 자동 재시도된다
+      const UserInfo = await getUserInfo();
+
+      const user: User = {
+        name: UserInfo.name,
+        email: UserInfo.email,
+        pushNotifications: true,
+        userType: UserInfo.user_type,
+      };
+
+      set({
+        isSignedIn: true,
+        isHydrating: false,
+        accessToken: getAccessToken(),
+        refreshToken: getRefreshToken(),
+        user,
+      });
+
+      return user;
+    } catch (error) {
+      clearTokens();
+      set({
+        isSignedIn: false,
+        isHydrating: false,
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+      throw error;
+    }
+  },
+
+  completeSocialSignin: async (tokens) => {
+    useChatStore.getState().reset();
+    useUiStore.getState().reset();
+
+    try {
+      setTokens({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      });
+
       const me = await getUserInfo();
 
       const user: User = {
