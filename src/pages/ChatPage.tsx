@@ -98,6 +98,13 @@ export function ChatPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
 
   useEffect(() => {
+    if (isSending || isUploading) {
+      setIsDragging(false);
+      setDraggedFiles([]);
+    }
+  }, [isSending, isUploading]);
+  
+  useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
 
@@ -167,10 +174,22 @@ export function ChatPage() {
     prevMessageCountRef.current = messages.length;
   }, [messages, activeSessionId]);
 
+  useEffect(() => {
+    if (isSending && wasNearBottomRef.current) {
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    }
+  }, [isSending]);
+
   // 숨겨진 file input을 버튼으로 트리거하기 위한 헬퍼.
-  const triggerUpload = () => fileInputRef.current?.click();
+  const triggerUpload = () => {
+    if (isSending || isUploading) return;
+    fileInputRef.current?.click();
+  };
 
   const handleFiles = async (files: FileList | null) => {
+    if (isSending || isUploading) return;
     if (!files || files.length === 0) return;
 
     try {
@@ -219,6 +238,7 @@ export function ChatPage() {
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isSending || isUploading) return;
     if (!hasFiles(e)) return;
 
     setIsDragging(true);
@@ -227,6 +247,7 @@ export function ChatPage() {
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isSending || isUploading) return;
     if (!hasFiles(e)) return;
 
     e.dataTransfer.dropEffect = "copy";
@@ -245,6 +266,7 @@ export function ChatPage() {
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isSending || isUploading) return;
     if (!hasFiles(e)) return;
 
     setIsDragging(false);
@@ -253,6 +275,8 @@ export function ChatPage() {
   };
 
   const handleSendMessage = async () => {
+    if (isSending || isUploading) return;
+
     wasNearBottomRef.current = isNearBottom();
     await sendMessage();
   };
@@ -314,11 +338,19 @@ export function ChatPage() {
                 ref={emptyComposerRef}
                 rows={1}
                 value={draft}
+                disabled={isSending || isUploading}
                 onChange={(e) => {
                   setDraft(e.target.value);
                   resizeTextarea(e.currentTarget);
                 }}
                 onKeyDown={(e) => {
+                  if (isSending || isUploading) {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                    }
+                    return;
+                  }
+
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     void handleSendMessage();
@@ -329,12 +361,12 @@ export function ChatPage() {
               />
               
               <div className="mt-2 flex items-center justify-between">
-                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isUploading}>
+                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isSending || isUploading}>
                   <Paperclip className="size-4" />
                 </Button>
                 <Button onClick={handleSendMessage} disabled={isSending || isUploading}>
                   <SendHorizontal className="mr-2 size-4" />
-                  전송
+                  {isSending ? "답변 생성 중" : "전송"}
                 </Button>
               </div>
             </div>
@@ -364,6 +396,22 @@ export function ChatPage() {
                   </div>
                 </div>
               ))}
+
+              {isSending && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-3 md:max-w-[75%]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-foreground/80">답변 생성 중</span>
+                      <div className="flex items-center gap-1">
+                        <span className="size-2 rounded-full bg-foreground/50 animate-bounce" />
+                        <span className="size-2 rounded-full bg-foreground/50 animate-bounce [animation-delay:0.15s]" />
+                        <span className="size-2 rounded-full bg-foreground/50 animate-bounce [animation-delay:0.3s]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -396,6 +444,13 @@ export function ChatPage() {
                   resizeTextarea(e.currentTarget);
                 }}
                 onKeyDown={(e) => {
+                  if (isSending || isUploading) {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                    }
+                    return;
+                  }
+
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     void handleSendMessage();
@@ -405,12 +460,12 @@ export function ChatPage() {
                 className="min-h-12 resize-none overflow-hidden border-0 bg-transparent"
               />
               <div className="mt-2 flex items-center justify-between">
-                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isUploading}>
+                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isSending || isUploading}>
                   <Paperclip className="size-4" />
                 </Button>
                 <Button onClick={handleSendMessage} disabled={isSending || isUploading}>
                   <SendHorizontal className="mr-2 size-4" />
-                  전송
+                  {isSending ? "답변 생성 중" : "전송"}
                 </Button>
               </div>
             </div>
