@@ -98,6 +98,13 @@ export function ChatPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
 
   useEffect(() => {
+    if (isSending || isUploading) {
+      setIsDragging(false);
+      setDraggedFiles([]);
+    }
+  }, [isSending, isUploading]);
+  
+  useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
 
@@ -166,7 +173,7 @@ export function ChatPage() {
 
     prevMessageCountRef.current = messages.length;
   }, [messages, activeSessionId]);
-  
+
   useEffect(() => {
     if (isSending && wasNearBottomRef.current) {
       requestAnimationFrame(() => {
@@ -176,9 +183,13 @@ export function ChatPage() {
   }, [isSending]);
 
   // 숨겨진 file input을 버튼으로 트리거하기 위한 헬퍼.
-  const triggerUpload = () => fileInputRef.current?.click();
+  const triggerUpload = () => {
+    if (isSending || isUploading) return;
+    fileInputRef.current?.click();
+  };
 
   const handleFiles = async (files: FileList | null) => {
+    if (isSending || isUploading) return;
     if (!files || files.length === 0) return;
 
     try {
@@ -227,6 +238,7 @@ export function ChatPage() {
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isSending || isUploading) return;
     if (!hasFiles(e)) return;
 
     setIsDragging(true);
@@ -235,6 +247,7 @@ export function ChatPage() {
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isSending || isUploading) return;
     if (!hasFiles(e)) return;
 
     e.dataTransfer.dropEffect = "copy";
@@ -253,6 +266,7 @@ export function ChatPage() {
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isSending || isUploading) return;
     if (!hasFiles(e)) return;
 
     setIsDragging(false);
@@ -347,7 +361,7 @@ export function ChatPage() {
               />
               
               <div className="mt-2 flex items-center justify-between">
-                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isUploading}>
+                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isSending || isUploading}>
                   <Paperclip className="size-4" />
                 </Button>
                 <Button onClick={handleSendMessage} disabled={isSending || isUploading}>
@@ -446,7 +460,7 @@ export function ChatPage() {
                 className="min-h-12 resize-none overflow-hidden border-0 bg-transparent"
               />
               <div className="mt-2 flex items-center justify-between">
-                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isUploading}>
+                <Button onClick={triggerUpload} variant="ghost" size="icon" aria-label="문서 업로드" disabled={isSending || isUploading}>
                   <Paperclip className="size-4" />
                 </Button>
                 <Button onClick={handleSendMessage} disabled={isSending || isUploading}>
