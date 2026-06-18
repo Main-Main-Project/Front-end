@@ -32,9 +32,34 @@ export function ChatPage() {
     isSending,
     connectSocket,
     registerSession,
+    touchSession,
+    appendLocalMessage,
   } = useChatStore();
 
+function getAttachmentMeta(extension: string) {
+  switch (extension) {
+    case "pdf":
+      return { label: "PDF", bgClass: "bg-red-500" };
+    case "hwp":
+    case "hwpx":
+      return { label: "HWP", bgClass: "bg-emerald-500" };
+    case "docx":
+      return { label: "DOCX", bgClass: "bg-blue-500" };
+    case "ppt":
+    case "pptx":
+      return { label: "PPT", bgClass: "bg-orange-500" };
+    case "xlsx":
+      return { label: "XLSX", bgClass: "bg-green-600" };
+    case "txt":
+      return { label: "TXT", bgClass: "bg-zinc-500" };
+    default:
+      return { label: "문서", bgClass: "bg-blue-500" };
+  }
+}
+
   const addUploadedDocument = useDocumentStore((s) => s.addUploadedDocument);
+  const loadDocuments = useDocumentStore((s) => s.loadDocuments);
+  const clearDocuments = useDocumentStore((s) => s.clearDocuments);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emptyComposerRef = useRef<HTMLTextAreaElement | null>(null);
   const activeComposerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -44,6 +69,7 @@ export function ChatPage() {
   const prevMessageCountRef = useRef(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isRestoringSessionScroll, setIsRestoringSessionScroll] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const AUTO_SCROLL_THRESHOLD = 120;
 
@@ -64,6 +90,102 @@ export function ChatPage() {
     resizeTextarea(emptyComposerRef.current);
     resizeTextarea(activeComposerRef.current);
   }, [draft, activeSessionId]);
+
+  useEffect(() => {
+    setPendingFiles([]);
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    if (!activeSessionId) {
+      clearDocuments();
+      return;
+    }
+
+    void loadDocuments(activeSessionId);
+  }, [activeSessionId, loadDocuments, clearDocuments]);
+
+  const renderAttachedDocumentCards = () => {
+    if (pendingFiles.length === 0 && !isUploading) return null;
+
+    return (
+      <div className="mb-3 overflow-x-auto overflow-y-hidden scrollbar-hide">
+        <div className="flex min-w-max gap-2 pr-1">
+          {pendingFiles.map((file) => {
+            const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+            const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+            const fileMeta = (() => {
+              switch (extension) {
+                case "pdf":
+                  return { label: "PDF", bgClass: "bg-red-500" };
+                case "hwp":
+                case "hwpx":
+                  return { label: "HWP", bgClass: "bg-emerald-500" };
+                case "docx":
+                  return { label: "DOCX", bgClass: "bg-blue-500" };
+                case "ppt":
+                case "pptx":
+                  return { label: "PPT", bgClass: "bg-orange-500" };
+                case "xlsx":
+                  return { label: "XLSX", bgClass: "bg-green-600" };
+                case "txt":
+                  return { label: "TXT", bgClass: "bg-zinc-500" };
+                default:
+                  return { label: "문서", bgClass: "bg-blue-500" };
+              }
+            })();
+
+            return (
+              <div
+                key={fileKey}
+                className="flex w-[190px] shrink-0 items-center gap-2 rounded-xl border border-border bg-background px-2.5 py-2"
+              >
+                <div
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-lg text-white",
+                    fileMeta.bgClass
+                  )}
+                >
+                  <Paperclip className="size-3.5" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-semibold">{file.name}</p>
+                  <p className="text-[9px] text-mutedForeground">{fileMeta.label}</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full p-0.5 text-mutedForeground hover:bg-muted hover:text-foreground"
+                  onClick={() => {
+                    setPendingFiles((prev) =>
+                      prev.filter(
+                        (item) =>
+                          !(
+                            item.name === file.name &&
+                            item.size === file.size &&
+                            item.lastModified === file.lastModified
+                          )
+                      )
+                    );
+                  }}
+                  aria-label="첨부 문서 제거"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+
+          {isUploading && (
+            <div className="flex w-[220px] shrink-0 items-center justify-center rounded-3xl border border-border bg-muted px-4 py-3 text-sm text-mutedForeground">
+              업로드 중...
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const getScrollViewport = () =>
     scrollAreaRef.current?.querySelector(
@@ -188,48 +310,41 @@ export function ChatPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFiles = async (files: FileList | null) => {
+  const MAX_PENDING_FILES = 3;
+
+  const handleFiles = (files: FileList | null) => {
     if (isSending || isUploading) return;
     if (!files || files.length === 0) return;
 
-    try {
-      setIsUploading(true);
+    const nextFiles = Array.from(files);
 
-      let sessionId = activeSessionId;
+    setPendingFiles((prev) => {
+      const merged = [...prev];
 
-      if (!sessionId) {
-        const session = await createSession();
+      for (const file of nextFiles) {
+        const exists = merged.some(
+          (item) =>
+            item.name === file.name &&
+            item.size === file.size &&
+            item.lastModified === file.lastModified
+        );
 
-        registerSession({
-          id: session.session_id,
-          title: session.title,
-          updatedAt: session.created_at,
-        });
+        if (!exists && merged.length >= MAX_PENDING_FILES) {
+          showToast({
+            title: "첨부 제한",
+            description: "문서는 최대 3개까지 첨부할 수 있습니다.",
+            tone: "error",
+          });
+          break;
+        }
 
-        sessionId = session.session_id;
-        await connectSocket(sessionId);
+        if (!exists) {
+          merged.push(file);
+        }
       }
 
-      for (const file of Array.from(files)) {
-        const uploaded = await uploadDocument(sessionId, file);
-        addUploadedDocument(uploaded);
-
-        showToast({
-          title: "문서 업로드 완료",
-          description: `${uploaded.file_name} 문서가 업로드되었습니다.`,
-          tone: "success",
-        });
-      }
-    } catch (error) {
-      showToast({
-        title: "문서 업로드 실패",
-        description:
-          error instanceof Error ? error.message : "문서 업로드 중 오류가 발생했습니다.",
-        tone: "error",
-      });
-    } finally {
-      setIsUploading(false);
-    }
+      return merged.slice(0, MAX_PENDING_FILES);
+    });
   };
 
   const hasFiles = (e: React.DragEvent<HTMLDivElement>) => {
@@ -277,8 +392,77 @@ export function ChatPage() {
   const handleSendMessage = async () => {
     if (isSending || isUploading) return;
 
+    const text = draft.trim();
+
+    if (!text && pendingFiles.length === 0) return;
+
     wasNearBottomRef.current = isNearBottom();
-    await sendMessage();
+
+    try {
+      setIsUploading(true);
+
+      let sessionId = activeSessionId;
+
+      if (!sessionId) {
+        const session = await createSession();
+
+        registerSession({
+          id: session.session_id,
+          title: session.title,
+          updatedAt: session.created_at,
+        });
+
+        sessionId = session.session_id;
+        await connectSocket(sessionId);
+      }
+
+      if (pendingFiles.length > 0) {
+        const uploadedFileNames: string[] = [];
+
+        for (const file of pendingFiles) {
+          const uploaded = await uploadDocument(sessionId, file);
+
+          addUploadedDocument(uploaded);
+          uploadedFileNames.push(uploaded.file_name);
+        }
+
+        touchSession(sessionId);
+
+        appendLocalMessage(sessionId, {
+          id: crypto.randomUUID(),
+          role: "user",
+          type: "document-upload",
+          content: "",
+          createdAt: new Date().toISOString(),
+          attachments: uploadedFileNames.map((fileName) => ({
+            name: fileName,
+            extension: fileName.split(".").pop()?.toLowerCase() ?? "",
+          })),
+        });
+
+        setPendingFiles([]);
+      }
+
+      if (text) {
+        await sendMessage();
+        return;
+      }
+
+      showToast({
+        title: "문서 업로드 완료",
+        description: "문서 업로드가 완료되었습니다.",
+        tone: "success",
+      });
+    } catch (error) {
+      showToast({
+        title: "전송 실패",
+        description:
+          error instanceof Error ? error.message : "문서 또는 메시지 전송 중 오류가 발생했습니다.",
+        tone: "error",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -334,6 +518,7 @@ export function ChatPage() {
           <h2 className="mb-6 text-center text-3xl font-semibold">무엇을 도와드릴까요?</h2>
           <div className="w-full max-w-3xl">
             <div className="rounded-3xl border border-border bg-input p-2">
+              {renderAttachedDocumentCards()}
               <Textarea
                 ref={emptyComposerRef}
                 rows={1}
@@ -389,7 +574,37 @@ export function ChatPage() {
                         : "bg-muted text-foreground"
                     }`}
                   >
-                    <p>{message.content}</p>
+                    {message.type === "document-upload" && message.attachments ? (
+                      <div className="space-y-2">
+                        {message.attachments.map((file) => {
+                          const meta = getAttachmentMeta(file.extension);
+
+                          return (
+                            <div
+                              key={`${message.id}-${file.name}`}
+                              className="flex w-[190px] items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-2.5 py-2"
+                            >
+                              <div
+                                className={cn(
+                                  "flex size-9 shrink-0 items-center justify-center rounded-lg text-white",
+                                  meta.bgClass
+                                )}
+                              >
+                                <Paperclip className="size-3.5" />
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[12px] font-semibold">{file.name}</p>
+                                <p className="text-[9px] opacity-80">{meta.label}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p>{message.content}</p>
+                    )}
+
                     <span className="mt-2 block text-[11px] opacity-70">
                       {formatChatTime(message.createdAt)}
                     </span>
@@ -435,6 +650,7 @@ export function ChatPage() {
 
           <div className="border-t border-border p-4 md:px-10">
             <div className="mx-auto w-full max-w-4xl rounded-3xl border border-border bg-input p-3">
+              {renderAttachedDocumentCards()}
               <Textarea
                 ref={activeComposerRef}
                 rows={1}

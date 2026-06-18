@@ -3,12 +3,19 @@ import { getMessages, getSessions } from "@/lib/chatApi";
 import { connectChatSocket } from "@/lib/chatSocket";
 import { showToast } from "@/stores/notificationStore";
 
+type UploadedAttachment = {
+  name: string;
+  extension: string;
+};
+
 type UiMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   createdAt: string;
   pending?: boolean;
+  type?: "text" | "document-upload";
+  attachments?: UploadedAttachment[];
 };
 
 type UiSession = {
@@ -32,7 +39,9 @@ type ChatState = {
   isLoadingSessions: boolean;
   isLoadingMessages: boolean;
   isSending: boolean;
-
+  
+  touchSession: (sessionId: string) => void;
+  appendLocalMessage: (sessionId: string, message: UiMessage) => void;
   setDraft: (draft: string) => void;
   loadSessions: () => Promise<void>;
   loadMessages: (sessionId: string) => Promise<void>;
@@ -57,6 +66,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isSending: false,
 
   setDraft: (draft) => set({ draft }),
+
+  touchSession: (sessionId) =>
+  set((state) => ({
+    sessions: sortSessionsByUpdatedAt(
+      state.sessions.map((session) =>
+        session.id === sessionId
+          ? { ...session, updatedAt: new Date().toISOString() }
+          : session
+      )
+    ),
+  })),
+
+appendLocalMessage: (sessionId, message) =>
+  set((state) => ({
+    messagesBySession: {
+      ...state.messagesBySession,
+      [sessionId]: [...(state.messagesBySession[sessionId] ?? []), message],
+    },
+  })),
 
   loadSessions: async () => {
     set({ isLoadingSessions: true });
