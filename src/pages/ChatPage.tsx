@@ -9,6 +9,7 @@ import { createSession, uploadDocument } from "@/lib/chatApi";
 import { useChatStore } from "@/stores/chatStore";
 import { useDocumentStore } from "@/stores/documentStore";
 import { showToast } from "@/stores/notificationStore";
+import { getAttachmentMeta } from "@/styles/attachmentMeta";
 
 function formatChatTime(value: string) {
   return new Date(value).toLocaleTimeString("ko-KR", {
@@ -35,27 +36,6 @@ export function ChatPage() {
     touchSession,
     appendLocalMessage,
   } = useChatStore();
-
-function getAttachmentMeta(extension: string) {
-  switch (extension) {
-    case "pdf":
-      return { label: "PDF", bgClass: "bg-red-500" };
-    case "hwp":
-    case "hwpx":
-      return { label: "HWP", bgClass: "bg-emerald-500" };
-    case "docx":
-      return { label: "DOCX", bgClass: "bg-blue-500" };
-    case "ppt":
-    case "pptx":
-      return { label: "PPT", bgClass: "bg-orange-500" };
-    case "xlsx":
-      return { label: "XLSX", bgClass: "bg-green-600" };
-    case "txt":
-      return { label: "TXT", bgClass: "bg-zinc-500" };
-    default:
-      return { label: "문서", bgClass: "bg-blue-500" };
-  }
-}
 
   const addUploadedDocument = useDocumentStore((s) => s.addUploadedDocument);
   const loadDocuments = useDocumentStore((s) => s.loadDocuments);
@@ -114,26 +94,7 @@ function getAttachmentMeta(extension: string) {
             const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
             const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
 
-            const fileMeta = (() => {
-              switch (extension) {
-                case "pdf":
-                  return { label: "PDF", bgClass: "bg-red-500" };
-                case "hwp":
-                case "hwpx":
-                  return { label: "HWP", bgClass: "bg-emerald-500" };
-                case "docx":
-                  return { label: "DOCX", bgClass: "bg-blue-500" };
-                case "ppt":
-                case "pptx":
-                  return { label: "PPT", bgClass: "bg-orange-500" };
-                case "xlsx":
-                  return { label: "XLSX", bgClass: "bg-green-600" };
-                case "txt":
-                  return { label: "TXT", bgClass: "bg-zinc-500" };
-                default:
-                  return { label: "문서", bgClass: "bg-blue-500" };
-              }
-            })();
+            const fileMeta = getAttachmentMeta(extension);
 
             return (
               <div
