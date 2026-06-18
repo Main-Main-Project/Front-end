@@ -229,7 +229,7 @@ export function ChatPage() {
     return () => {
       viewport.removeEventListener("scroll", handleMessagesScroll);
     };
-  }, [activeSessionId, messages.length]);
+  }, [activeSessionId]);
 
   useEffect(() => {
     if (messages.length === 0) {
