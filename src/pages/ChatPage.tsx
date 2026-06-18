@@ -360,48 +360,52 @@ export function ChatPage() {
     wasNearBottomRef.current = isNearBottom();
 
     try {
-      setIsUploading(true);
-
       let sessionId = activeSessionId;
-
-      if (!sessionId) {
-        const session = await createSession();
-
-        registerSession({
-          id: session.session_id,
-          title: session.title,
-          updatedAt: session.created_at,
-        });
-
-        sessionId = session.session_id;
-        await connectSocket(sessionId);
-      }
+      let uploadedAttachments: { name: string; extension: string }[] = [];
 
       if (pendingFiles.length > 0) {
-        const uploadedFileNames: string[] = [];
+        if (!sessionId) {
+          const session = await createSession();
 
-        for (const file of pendingFiles) {
-          const uploaded = await uploadDocument(sessionId, file);
+          registerSession({
+            id: session.session_id,
+            title: session.title,
+            updatedAt: session.created_at,
+          });
 
-          addUploadedDocument(uploaded);
-          uploadedFileNames.push(uploaded.file_name);
+          sessionId = session.session_id;
+          await connectSocket(sessionId);
         }
 
-        touchSession(sessionId);
+      setIsUploading(true);
 
+      const uploadedFileNames: string[] = [];
+
+      for (const file of pendingFiles) {
+        const uploaded = await uploadDocument(sessionId, file);
+        addUploadedDocument(uploaded);
+        uploadedFileNames.push(uploaded.file_name);
+      }
+
+      touchSession(sessionId);
+
+      uploadedAttachments = uploadedFileNames.map((fileName) => ({
+        name: fileName,
+        extension: fileName.split(".").pop()?.toLowerCase() ?? "",
+      }));
+
+      setPendingFiles([]);
+    }
+
+      if (sessionId && (text || uploadedAttachments.length > 0)) {
         appendLocalMessage(sessionId, {
           id: crypto.randomUUID(),
           role: "user",
-          type: "document-upload",
-          content: "",
+          content: text,
           createdAt: new Date().toISOString(),
-          attachments: uploadedFileNames.map((fileName) => ({
-            name: fileName,
-            extension: fileName.split(".").pop()?.toLowerCase() ?? "",
-          })),
+          pending: !!text,
+          attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
         });
-
-        setPendingFiles([]);
       }
 
       if (text) {
@@ -535,36 +539,38 @@ export function ChatPage() {
                         : "bg-muted text-foreground"
                     }`}
                   >
-                    {message.type === "document-upload" && message.attachments ? (
-                      <div className="space-y-2">
-                        {message.attachments.map((file) => {
-                          const meta = getAttachmentMeta(file.extension);
+                    <div className="space-y-2">
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="space-y-2">
+                          {message.attachments.map((file) => {
+                            const meta = getAttachmentMeta(file.extension);
 
-                          return (
-                            <div
-                              key={`${message.id}-${file.name}`}
-                              className="flex w-[190px] items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-2.5 py-2"
-                            >
+                            return (
                               <div
-                                className={cn(
-                                  "flex size-9 shrink-0 items-center justify-center rounded-lg text-white",
-                                  meta.bgClass
-                                )}
+                                key={`${message.id}-${file.name}`}
+                                className="flex w-[190px] items-center gap-2 rounded-xl border border-white/10 bg-black/10 px-2.5 py-2"
                               >
-                                <Paperclip className="size-3.5" />
-                              </div>
+                                <div
+                                  className={cn(
+                                    "flex size-9 shrink-0 items-center justify-center rounded-lg text-white",
+                                    meta.bgClass
+                                  )}
+                                >
+                                  <Paperclip className="size-3.5" />
+                                </div>
 
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[12px] font-semibold">{file.name}</p>
-                                <p className="text-[9px] opacity-80">{meta.label}</p>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[12px] font-semibold">{file.name}</p>
+                                  <p className="text-[9px] opacity-80">{meta.label}</p>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p>{message.content}</p>
-                    )}
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {message.content && <p>{message.content}</p>}
+                    </div>
 
                     <span className="mt-2 block text-[11px] opacity-70">
                       {formatChatTime(message.createdAt)}

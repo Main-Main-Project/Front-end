@@ -14,7 +14,6 @@ type UiMessage = {
   content: string;
   createdAt: string;
   pending?: boolean;
-  type?: "text" | "document-upload";
   attachments?: UploadedAttachment[];
 };
 
@@ -387,33 +386,10 @@ appendLocalMessage: (sessionId, message) =>
 
     if (!text) return;
 
-    const userMessage: UiMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-      createdAt: new Date().toISOString(),
-      pending: true,
-    };
-
-    if (activeSessionId) {
-      set((state) => ({
-        draft: "",
-        isSending: true,
-        messagesBySession: {
-          ...state.messagesBySession,
-          [activeSessionId]: [
-            ...(state.messagesBySession[activeSessionId] ?? []),
-            userMessage,
-          ],
-        },
-      }));
-    } else {
-      set((state) => ({
-        draft: "",
-        isSending: true,
-        pendingNewChatMessages: [...state.pendingNewChatMessages, userMessage],
-      }));
-    }
+    set({
+      draft: "",
+      isSending: true,
+    });
 
     let currentSocket = socket;
 
