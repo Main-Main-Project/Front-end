@@ -1,10 +1,13 @@
 ﻿import { create } from "zustand";
-import { mockDocuments, type DocItem, type DocumentStatus } from "@/data/mock";
-import type { UploadedDocumentDto } from "@/lib/chatApi";
+import { type DocItem, type DocumentStatus } from "@/data/mock";
+import { getDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
 
 type DocumentState = {
   documents: DocItem[];
+  isLoadingDocuments: boolean;
+  loadDocuments: (sessionId: string) => Promise<void>;
   addUploadedDocument: (document: UploadedDocumentDto) => void;
+  clearDocuments: () => void;
 };
 
 function mapDocumentStatus(status: UploadedDocumentDto["status"]): DocumentStatus {
@@ -37,7 +40,25 @@ function toDocItem(document: UploadedDocumentDto): DocItem {
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
-  documents: mockDocuments,
+  documents: [],
+  isLoadingDocuments: false,
+
+  loadDocuments: async (sessionId) => {
+    set({ isLoadingDocuments: true });
+
+    try {
+      const data = await getDocuments(sessionId);
+
+      set({
+        documents: data
+          .map(toDocItem)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      });
+    } finally {
+      set({ isLoadingDocuments: false });
+    }
+  },
+
   addUploadedDocument: (document) => {
     const created = toDocItem(document);
 
@@ -47,5 +68,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         ...get().documents.filter((item) => item.id !== created.id),
       ],
     });
+  },
+
+  clearDocuments: () => {
+    set({ documents: [] });
   },
 }));

@@ -28,3 +28,22 @@ export async function getUserInfo() {
 
   return data as UserInfoResponse;
 }
+
+export async function updateUserProfile(payload: { name: string; email: string }) {
+  const response = await apiFetch("/user/profile", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail ?? "프로필 수정에 실패했습니다.");
+  }
+
+  if (data?.user_type !== "USER" && data?.user_type !== "ADMIN") {
+    throw new Error("허용되지 않은 사용자 권한입니다.");
+  }
+
+  return data as UserInfoResponse;
+}

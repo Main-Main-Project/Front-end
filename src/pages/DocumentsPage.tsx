@@ -17,6 +17,7 @@ const statusVariant: Record<DocumentStatus, "default" | "success" | "warning" | 
 
 export function DocumentsPage() {
   const documents = useDocumentStore((s) => s.documents);
+  const isLoadingDocuments = useDocumentStore((s) => s.isLoadingDocuments);
   const documentSearchQuery = useUiStore((s) => s.documentSearchQuery);
 
   // 검색어가 있으면 파일명/요약 기준으로 실시간 필터링한다.
@@ -39,6 +40,14 @@ export function DocumentsPage() {
       setSelected(filteredDocuments[0]);
     }
   }, [filteredDocuments, selected]);
+
+    if (isLoadingDocuments) {
+      return (
+        <div className="flex h-full w-full items-center justify-center p-8 text-mutedForeground">
+          문서를 불러오는 중입니다.
+        </div>
+      );
+    }
 
   if (documents.length === 0) {
     return <div className="flex h-full w-full items-center justify-center p-8 text-mutedForeground">업로드된 문서가 없습니다.</div>;
