@@ -96,16 +96,14 @@ export function MyPage() {
           </Button>
         </div>
         {user?.userType === "USER" && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <h2 className="text-sm font-semibold text-red-700">Danger Zone</h2>
-            <p className="mt-1 text-xs text-red-600">회원 탈퇴 시 계정 데이터는 복구할 수 없습니다.</p>
+          <div className="flex justify-end">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button className="mt-3" variant="destructive">회원 탈퇴</Button>
+                <Button className="w-fit" variant="destructive">회원 탈퇴</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <h3 className="text-lg font-semibold">정말 탈퇴하시겠습니까?</h3>
-                <p className="mt-2 text-sm text-mutedForeground">이 작업은 되돌릴 수 없습니다.</p>
+                <p className="mt-2 text-sm text-mutedForeground">회원 탈퇴 시 계정과 모든 데이터가 삭제되며, 복구할 수 없습니다.</p>
                 <div className="mt-5 flex justify-end gap-2">
                   <AlertDialogCancel>취소</AlertDialogCancel>
                   <AlertDialogAction
@@ -119,12 +117,12 @@ export function MyPage() {
                         });
                         navigate("/signin");
                       } catch (error) {
-                          showToast({
-                            title: "회원 탈퇴 실패",
-                            description: error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.",
-                            tone: "error",
-                          });
-                        }
+                        showToast({
+                          title: "회원 탈퇴 실패",
+                          description: error instanceof Error ? error.message : "회원 탈퇴에 실패했습니다.",
+                          tone: "error",
+                        });
+                      }
                     }}
                   >
                     탈퇴 진행
