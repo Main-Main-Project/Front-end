@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { deleteUser as deleteUserApi, login as loginApi, logout as logoutApi } from "@/lib/authApi";
-import { getUserInfo } from "@/lib/userApi";
+import { getUserInfo, updateUserProfile as updateUserProfileApi } from "@/lib/userApi";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/tokenStorage";
 import { useChatStore } from "@/stores/chatStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -8,7 +8,6 @@ import { useUiStore } from "@/stores/uiStore";
 type User = {
   name: string;
   email: string;
-  pushNotifications: boolean;
   userType: "USER" | "ADMIN";
 };
 
@@ -23,7 +22,7 @@ type AuthState = {
   hydrateUser: () => Promise<void>;
   signout: () => Promise<void>;
   withdraw: () => Promise<void>;
-  updateProfile: (payload: Pick<User, "name" | "email" | "pushNotifications">) => void;
+  updateProfile: (payload: Pick<User, "name" | "email">) => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -51,7 +50,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user: User = {
         name: UserInfo.name,
         email: UserInfo.email,
-        pushNotifications: true,
         userType: UserInfo.user_type,
       };
 
@@ -92,7 +90,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user: User = {
         name: me.name,
         email: me.email,
-        pushNotifications: true,
         userType: me.user_type,
       };
 
@@ -150,7 +147,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         user: {
           name: me.name,
           email: me.email,
-          pushNotifications: true,
           userType: me.user_type,
         },
       });
@@ -200,8 +196,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  updateProfile: (payload) =>
+  updateProfile: async ({ name, email }) => {
+    const updatedUser = await updateUserProfileApi({ name, email });
+
     set((state) => ({
-      user: state.user ? { ...state.user, ...payload } : null,
-    })),
+      user: state.user
+        ? {
+            ...state.user,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            userType: updatedUser.user_type,
+          }
+        : null,
+    }));
+  },
 }));
