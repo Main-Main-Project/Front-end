@@ -386,10 +386,26 @@ appendLocalMessage: (sessionId, message) =>
 
     if (!text) return;
 
-    set({
-      draft: "",
-      isSending: true,
-    });
+    const userMessage: UiMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
+
+    if (activeSessionId) {
+      set({
+        draft: "",
+        isSending: true,
+      });
+    } else {
+      set((state) => ({
+        draft: "",
+        isSending: true,
+        pendingNewChatMessages: [...state.pendingNewChatMessages, userMessage],
+      }));
+    }
 
     let currentSocket = socket;
 
