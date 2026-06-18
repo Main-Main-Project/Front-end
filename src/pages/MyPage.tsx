@@ -1,48 +1,77 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { showToast } from "@/stores/notificationStore";
 
 export function MyPage() {
   const navigate = useNavigate();
   const { user, updateProfile, signout, withdraw } = useAuthStore();
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications ?? true);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setName(user.name);
+    setEmail(user.email);
+  }, [user]);
+
+  if (!user) {
+    return <div>사용자 정보를 불러올 수 없습니다.</div>;
+  }
 
   return (
     <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
       <Card className="space-y-6 p-6">
         <div>
           <h1 className="text-2xl font-semibold">Account Settings</h1>
-          <p className="mt-1 text-sm text-mutedForeground">계정 정보와 알림 설정을 관리할 수 있습니다.</p>
+          <p className="mt-1 text-sm text-mutedForeground">계정 정보를 관리할 수 있습니다.</p>
         </div>
+        
         <div className="space-y-4">
-          <div><label className="mb-2 block text-sm text-mutedForeground">Name</label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div><label className="mb-2 block text-sm text-mutedForeground">Email</label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-          <div className="flex items-center justify-between rounded-xl border border-border p-4">
-            <p className="text-sm">Push Notifications</p>
-            <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
+          <div>
+            <label className="mb-2 block text-sm text-mutedForeground">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-mutedForeground">Email</label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
         </div>
+
         <div className="flex flex-wrap gap-2">
           <Button
-            onClick={() => {
-              updateProfile({ name, email, pushNotifications });
-              showToast({
-                title: "저장 완료",
-                description: "계정 정보가 저장되었습니다.",
-                tone: "success",
-              });
+            disabled={isSaving}
+            onClick={async () => {
+              try {
+                setIsSaving(true);
+                await updateProfile({ name, email });
+
+                showToast({
+                  title: "저장 완료",
+                  description: "계정 정보가 저장되었습니다.",
+                  tone: "success",
+                });
+              } catch (error) {
+                showToast({
+                  title: "저장 실패",
+                  description: error instanceof Error ? error.message : "프로필 수정에 실패했습니다.",
+                  tone: "error",
+                });
+              } finally {
+                setIsSaving(false);
+              }
             }}
           >
-            저장
+            {isSaving ? "저장 중..." : "저장"}
           </Button>
+
           <Button
             variant="secondary"
             onClick={async () => {
