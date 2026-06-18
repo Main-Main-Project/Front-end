@@ -10,14 +10,20 @@ import { showToast } from "@/stores/notificationStore";
 export function MyPage() {
   const navigate = useNavigate();
   const { user, updateProfile, signout, withdraw } = useAuthStore();
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setName(user?.name ?? "");
-    setEmail(user?.email ?? "");
+    if (!user) return;
+
+    setName(user.name);
+    setEmail(user.email);
   }, [user]);
+
+  if (!user) {
+    return <div>사용자 정보를 불러올 수 없습니다.</div>;
+  }
 
   return (
     <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
