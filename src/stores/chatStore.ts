@@ -1,5 +1,5 @@
 ﻿import { create } from "zustand";
-import { getMessages, getSessions } from "@/lib/chatApi";
+import { getSessionTotal, getSessions } from "@/lib/chatApi";
 import { connectChatSocket } from "@/lib/chatSocket";
 import { showToast } from "@/stores/notificationStore";
 
@@ -118,28 +118,54 @@ appendLocalMessage: (sessionId, message) =>
     set({ isLoadingMessages: true });
 
     try {
-      const data = await getMessages(sessionId);
+      const data = await getSessionTotal(sessionId);
 
-      const uiMessages = data.flatMap((item) => {
-        const messages: UiMessage[] = [
-          {
-            id: `${item.message_id}-question`,
-            role: "user",
-            content: item.question,
-            createdAt: item.question_at,
-          },
-        ];
+      const uiMessages : UiMessage[] = data.flatMap((item) => {
+        if (item.type === "message") {
+          const msg = item.message;
 
-        if (item.answer) {
-          messages.push({
-            id: `${item.message_id}-answer`,
-            role: "assistant",
-            content: item.answer,
-            createdAt: item.answer_at ?? item.question_at,
-          });
+          const messages: UiMessage[] = [
+            {
+              id: `${msg.message_id}-question`,
+              role: "user",
+              content: msg.question,
+              createdAt: msg.question_at,
+            },
+          ];
+
+          if (msg.answer) {
+            messages.push({
+              id: `${msg.message_id}-answer`,
+              role: "assistant",
+              content: msg.answer,
+              createdAt: msg.answer_at ?? msg.question_at,
+            });
+          }
+
+          return messages;
         }
 
-        return messages;
+        if (item.type === "document") {
+          const doc = item.document;
+          const extension = doc.file_name.split(".").pop()?.toLowerCase() ?? "";
+
+          const documentMessage: UiMessage = {
+            id: `${doc.document_id}-document`,
+            role: "user",
+            content: "",
+            createdAt: doc.created_at,
+            attachments: [
+              {
+                name: doc.file_name,
+                extension,
+              },
+            ],
+          };
+
+          return [documentMessage];
+        }
+
+        return [];
       });
 
       set((state) => ({
