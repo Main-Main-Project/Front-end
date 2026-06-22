@@ -1,5 +1,5 @@
 ﻿import { create } from "zustand";
-import { getMessages, getSessions } from "@/lib/chatApi";
+import { getSessionTotal, getSessions } from "@/lib/chatApi";
 import { connectChatSocket } from "@/lib/chatSocket";
 import { showToast } from "@/stores/notificationStore";
 
@@ -37,7 +37,7 @@ type ChatState = {
   socket: WebSocket | null;
   isLoadingSessions: boolean;
   isLoadingMessages: boolean;
-  isSending: boolean;
+  sendingBySession: Record<string, boolean>;
   
   touchSession: (sessionId: string) => void;
   appendLocalMessage: (sessionId: string, message: UiMessage) => void;
@@ -62,7 +62,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   socket: null,
   isLoadingSessions: false,
   isLoadingMessages: false,
-  isSending: false,
+  sendingBySession: {},
 
   setDraft: (draft) => set({ draft }),
 
@@ -118,34 +118,70 @@ appendLocalMessage: (sessionId, message) =>
     set({ isLoadingMessages: true });
 
     try {
-      const data = await getMessages(sessionId);
+      const data = await getSessionTotal(sessionId);
 
-      const uiMessages = data.flatMap((item) => {
-        const messages: UiMessage[] = [
-          {
-            id: `${item.message_id}-question`,
-            role: "user",
-            content: item.question,
-            createdAt: item.question_at,
-          },
-        ];
+      const uiMessages : UiMessage[] = data.flatMap((item) => {
+        if (item.type === "message") {
+          const msg = item.message;
 
-        if (item.answer) {
-          messages.push({
-            id: `${item.message_id}-answer`,
-            role: "assistant",
-            content: item.answer,
-            createdAt: item.answer_at ?? item.question_at,
-          });
+          const messages: UiMessage[] = [
+            {
+              id: `${msg.message_id}-question`,
+              role: "user",
+              content: msg.question,
+              createdAt: msg.question_at,
+            },
+          ];
+
+          if (msg.answer) {
+            messages.push({
+              id: `${msg.message_id}-answer`,
+              role: "assistant",
+              content: msg.answer,
+              createdAt: msg.answer_at ?? msg.question_at,
+            });
+          }
+
+          return messages;
         }
 
-        return messages;
+        if (item.type === "document") {
+          const doc = item.document;
+          const extension = doc.file_name.split(".").pop()?.toLowerCase() ?? "";
+
+          const documentMessage: UiMessage = {
+            id: `${doc.document_id}-document`,
+            role: "user",
+            content: "",
+            createdAt: doc.created_at,
+            attachments: [
+              {
+                name: doc.file_name,
+                extension,
+              },
+            ],
+          };
+
+          return [documentMessage];
+        }
+
+        return [];
       });
+
+      const hasAssistantMessage = uiMessages.some(
+        (message) => message.role === "assistant"
+      );
 
       set((state) => ({
         messagesBySession: {
           ...state.messagesBySession,
           [sessionId]: uiMessages,
+        },
+        sendingBySession: {
+          ...state.sendingBySession,
+          [sessionId]: hasAssistantMessage
+            ? false
+            : (state.sendingBySession[sessionId] ?? false),
         },
       }));
     } catch (error) {
@@ -181,7 +217,10 @@ appendLocalMessage: (sessionId, message) =>
           [session.id]: state.messagesBySession[session.id] ?? [],
         },
         pendingNewChatMessages: [],
-        isSending: false,
+        sendingBySession: {
+          ...state.sendingBySession,
+          [session.id]: false,
+        },
       };
     });
   },
@@ -195,7 +234,6 @@ appendLocalMessage: (sessionId, message) =>
       pendingNewChatMessages: [],
       draft: "",
       socket: null,
-      isSending: false,
     });
   },
 
@@ -253,6 +291,10 @@ appendLocalMessage: (sessionId, message) =>
                     pending: false,
                   })),
                 },
+                sendingBySession: {
+                ...state.sendingBySession,
+                [data.session_id]: true,
+              },
                 pendingNewChatMessages: [],
               };
             });
@@ -264,7 +306,7 @@ appendLocalMessage: (sessionId, message) =>
               const targetSessionId = data.session_id ?? state.activeSessionId;
 
               if (!targetSessionId) {
-                return { isSending: false };
+                return {};
               }
 
               const existingMessages = state.messagesBySession[targetSessionId] ?? [];
@@ -314,14 +356,26 @@ appendLocalMessage: (sessionId, message) =>
                   ],
                 },
                 sessions: sortSessionsByUpdatedAt(nextSessions),
-                isSending: false,
+                sendingBySession: {
+                  ...state.sendingBySession,
+                  [targetSessionId]: false,
+                },
               };
             });
             return;
           }
 
           if (data.type === "error") {
-            set({ isSending: false });
+            const targetSessionId = data.session_id ?? get().activeSessionId;
+
+            if (targetSessionId) {
+              set((state) => ({
+                sendingBySession: {
+                  ...state.sendingBySession,
+                  [targetSessionId]: false,
+                },
+              }));
+            }
 
             showToast({
               title: "채팅 오류",
@@ -330,7 +384,16 @@ appendLocalMessage: (sessionId, message) =>
             });
           }
         } catch {
-          set({ isSending: false });
+          const currentSessionId = get().activeSessionId;
+
+          if (currentSessionId) {
+            set((state) => ({
+              sendingBySession: {
+                ...state.sendingBySession,
+                [currentSessionId]: false,
+              },
+            }));
+          }
 
           showToast({
             title: "응답 처리 실패",
@@ -347,7 +410,19 @@ appendLocalMessage: (sessionId, message) =>
       const message =
         error instanceof Error ? error.message : "웹소켓 연결에 실패했습니다.";
 
-      set({ socket: null, isSending: false });
+      const currentSessionId = sessionId ?? get().activeSessionId;
+
+      if (currentSessionId) {
+        set((state) => ({
+          socket: null,
+          sendingBySession: {
+            ...state.sendingBySession,
+            [currentSessionId]: false,
+          },
+        }));
+      } else {
+        set({ socket: null });
+      }
 
       showToast({
         title: "웹소켓 연결 실패",
@@ -376,7 +451,7 @@ appendLocalMessage: (sessionId, message) =>
       socket: null,
       isLoadingSessions: false,
       isLoadingMessages: false,
-      isSending: false,
+      sendingBySession: {},
     });
   },
 
@@ -395,14 +470,16 @@ appendLocalMessage: (sessionId, message) =>
     };
 
     if (activeSessionId) {
-      set({
+      set((state) => ({
         draft: "",
-        isSending: true,
-      });
+        sendingBySession: {
+          ...state.sendingBySession,
+          [activeSessionId]: true,
+        },
+      }));
     } else {
       set((state) => ({
         draft: "",
-        isSending: true,
         pendingNewChatMessages: [...state.pendingNewChatMessages, userMessage],
       }));
     }
@@ -415,7 +492,16 @@ appendLocalMessage: (sessionId, message) =>
     }
 
     if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
-      set({ isSending: false });
+      const currentSessionId = activeSessionId ?? get().activeSessionId;
+
+      if (currentSessionId) {
+        set((state) => ({
+          sendingBySession: {
+            ...state.sendingBySession,
+            [currentSessionId]: false,
+          },
+        }));
+      }
 
       showToast({
         title: "메시지 전송 실패",

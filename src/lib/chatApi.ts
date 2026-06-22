@@ -38,6 +38,20 @@ export type UploadedDocumentDto = {
     created_at: string;
 };
 
+export type TotalMessageItemDto = {
+    type: "message";
+    created_at: string;
+    message: MessageDto;
+};
+
+export type TotalDocumentItemDto = {
+    type: "document";
+    created_at: string;
+    document: UploadedDocumentDto;
+};
+
+export type TotalItemDto = TotalMessageItemDto | TotalDocumentItemDto;
+
 export async function createSession() {
     const response = await apiFetch("/chat/session", {
         method: "POST",
@@ -71,6 +85,17 @@ export async function getMessages(sessionId: string) {
     }
 
     return data as MessageDto[];
+}
+
+export async function getSessionTotal(sessionId: string) {
+    const response = await apiFetch(`/chat/sessions/${sessionId}/total`);
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "세션 전체 이력을 불러오지 못했습니다.");
+    }
+
+    return data as TotalItemDto[];
 }
 
 export async function uploadDocument(sessionId: string, file: File) {

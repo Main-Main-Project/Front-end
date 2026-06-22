@@ -30,7 +30,7 @@ export function ChatPage() {
     selectSession,
     messagesBySession,
     pendingNewChatMessages,
-    isSending,
+    sendingBySession,
     connectSocket,
     registerSession,
     touchSession,
@@ -179,6 +179,7 @@ export function ChatPage() {
   const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
+  const isSending = activeSessionId ? (sendingBySession[activeSessionId] ?? false) : false;
 
   useEffect(() => {
     if (isSending || isUploading) {
