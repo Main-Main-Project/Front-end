@@ -190,7 +190,9 @@ export function ChatPage() {
   const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const isSending = activeSessionId ? (sendingBySession[activeSessionId] ?? false) : false;
+  const isSending = activeSessionId
+    ? (sendingBySession[activeSessionId] ?? false)
+    : pendingNewChatMessages.some((message) => message.role === "user" && message.pending);
 
   useEffect(() => {
     if (isSending || isUploading) {
