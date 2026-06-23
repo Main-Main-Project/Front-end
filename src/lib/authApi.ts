@@ -99,9 +99,14 @@ export async function login(payload: { email: string; password: string }) {
   }
 }
 
-export async function getKakaoLoginUrl() {
-  const response = await fetch(`${API_BASE_URL}/auth/kakao/login-url`);
-  const data = await response.json().catch(() => null);
+export async function getKakaoLoginUrl(forceLogin = false) {
+  const url = new URL(`${API_BASE_URL}/auth/kakao/login-url`);
+  if (forceLogin) {
+    url.searchParams.set("force_login", "true");
+  }
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(data?.detail ?? "카카오 로그인 URL 조회 실패");

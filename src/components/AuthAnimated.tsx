@@ -78,12 +78,23 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
     }
   };
 
-  const handleKakaoMove = async () => {
+  const handleKakaoLoginMove = async () => {
     try {
-      const loginUrl = await getKakaoLoginUrl();
+      const loginUrl = await getKakaoLoginUrl(false);
       window.location.href = loginUrl;
     } catch (err) {
       const message = err instanceof Error ? err.message : "카카오 로그인 이동 실패";
+      setLoginError(message);
+      setSignupError(message);
+    }
+  };
+
+  const handleKakaoSignupMove = async () => {
+    try {
+      const loginUrl = await getKakaoLoginUrl(true);
+      window.location.href = loginUrl;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "카카오 회원가입 이동 실패";
       setLoginError(message);
       setSignupError(message);
     }
@@ -189,7 +200,7 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
                 type="button"
                 className="social-icon kakao"
                 aria-label="Kakao login"
-                onClick={handleKakaoMove}
+                onClick={handleKakaoLoginMove}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" fill="#FEE500" />
@@ -258,7 +269,7 @@ export function AuthAnimated({ initialMode }: AuthAnimatedProps) {
                 type="button"
                 className="social-icon kakao"
                 aria-label="Kakao signup"
-                onClick={handleKakaoMove}
+                onClick={handleKakaoSignupMove}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" fill="#FEE500" />
