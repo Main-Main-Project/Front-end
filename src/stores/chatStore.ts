@@ -41,6 +41,8 @@ type ChatState = {
   
   touchSession: (sessionId: string) => void;
   appendLocalMessage: (sessionId: string, message: UiMessage) => void;
+  updateMessage: (sessionId: string, messageId: string, patch: Partial<UiMessage>) => void;
+  removeMessage: (sessionId: string, messageId: string) => void;
   setDraft: (draft: string) => void;
   loadSessions: () => Promise<void>;
   loadMessages: (sessionId: string) => Promise<void>;
@@ -49,7 +51,7 @@ type ChatState = {
   registerSession: (session: UiSession) => void;
   connectSocket: (sessionId?: string) => Promise<void>;
   disconnectSocket: () => void;
-  sendMessage: () => Promise<void>;
+  sendMessage: (textOverride?: string) => Promise<void>;
   reset: () => void;
 };
 
@@ -77,13 +79,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
     ),
   })),
 
-appendLocalMessage: (sessionId, message) =>
-  set((state) => ({
-    messagesBySession: {
-      ...state.messagesBySession,
-      [sessionId]: [...(state.messagesBySession[sessionId] ?? []), message],
-    },
-  })),
+  appendLocalMessage: (sessionId, message) =>
+    set((state) => ({
+      messagesBySession: {
+        ...state.messagesBySession,
+        [sessionId]: [...(state.messagesBySession[sessionId] ?? []), message],
+      },
+    })),
+
+  updateMessage: (sessionId, messageId, patch) =>
+    set((state) => ({
+      messagesBySession: {
+        ...state.messagesBySession,
+        [sessionId]: (state.messagesBySession[sessionId] ?? []).map((message) =>
+          message.id === messageId ? { ...message, ...patch } : message
+        ),
+      },
+    })),
+
+  removeMessage: (sessionId, messageId) =>
+    set((state) => ({
+      messagesBySession: {
+        ...state.messagesBySession,
+        [sessionId]: (state.messagesBySession[sessionId] ?? []).filter((message) => message.id !== messageId),
+      },
+    })),
 
   loadSessions: async () => {
     set({ isLoadingSessions: true });
@@ -149,20 +169,31 @@ appendLocalMessage: (sessionId, message) =>
           const doc = item.document;
           const extension = doc.file_name.split(".").pop()?.toLowerCase() ?? "";
 
-          const documentMessage: UiMessage = {
-            id: `${doc.document_id}-document`,
-            role: "user",
-            content: "",
-            createdAt: doc.created_at,
-            attachments: [
-              {
-                name: doc.file_name,
-                extension,
-              },
-            ],
-          };
+          const messages: UiMessage[] = [
+            {
+              id: `${doc.document_id}-document`,
+              role: "user",
+              content: "",
+              createdAt: doc.created_at,
+              attachments: [
+                {
+                  name: doc.file_name,
+                  extension,
+                },
+              ],
+            },
+          ];
 
-          return [documentMessage];
+          if (doc.summary?.trim()) {
+            messages.push({
+              id: `${doc.document_id}-summary`,
+              role: "assistant",
+              content: doc.summary.trim(),
+              createdAt: doc.created_at,
+            });
+          }
+
+          return messages;
         }
 
         return [];
@@ -455,9 +486,9 @@ appendLocalMessage: (sessionId, message) =>
     });
   },
 
-  sendMessage: async () => {
+  sendMessage: async (textOverride) => {
     const { draft, activeSessionId, socket, connectSocket } = get();
-    const text = draft.trim();
+    const text = (textOverride ?? draft).trim();
 
     if (!text) return;
 
