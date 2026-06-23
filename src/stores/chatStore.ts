@@ -317,10 +317,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 sessions: sortSessionsByUpdatedAt(nextSessions),
                 messagesBySession: {
                   ...state.messagesBySession,
-                  [data.session_id]: state.pendingNewChatMessages.map((message) => ({
-                    ...message,
-                    pending: false,
-                  })),
+                  [data.session_id]: state.pendingNewChatMessages,
                 },
                 sendingBySession: {
                 ...state.sendingBySession,
