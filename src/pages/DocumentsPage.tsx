@@ -18,6 +18,7 @@ const statusVariant: Record<DocumentStatus, "default" | "success" | "warning" | 
 export function DocumentsPage() {
   const documents = useDocumentStore((s) => s.documents);
   const isLoadingDocuments = useDocumentStore((s) => s.isLoadingDocuments);
+  const loadMyDocuments = useDocumentStore((s) => s.loadMyDocuments);
   const documentSearchQuery = useUiStore((s) => s.documentSearchQuery);
 
   // 검색어가 있으면 파일명/요약 기준으로 실시간 필터링한다.
@@ -28,6 +29,10 @@ export function DocumentsPage() {
   }, [documents, documentSearchQuery]);
 
   const [selected, setSelected] = useState<DocItem | null>(filteredDocuments[0] ?? null);
+
+  useEffect(() => {
+    void loadMyDocuments();
+  }, [loadMyDocuments]);
 
   useEffect(() => {
     // 필터 결과가 바뀌었을 때 선택 문서가 유효하지 않으면 첫 문서로 보정한다.

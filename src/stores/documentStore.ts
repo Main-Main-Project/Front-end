@@ -1,11 +1,12 @@
 ﻿import { create } from "zustand";
 import { type DocItem, type DocumentStatus } from "@/data/mock";
-import { getDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
+import { getDocuments, getMyDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
 
 type DocumentState = {
   documents: DocItem[];
   isLoadingDocuments: boolean;
   loadDocuments: (sessionId: string) => Promise<void>;
+  loadMyDocuments: () => Promise<void>;
   addUploadedDocument: (document: UploadedDocumentDto) => void;
   clearDocuments: () => void;
 };
@@ -48,6 +49,22 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
     try {
       const data = await getDocuments(sessionId);
+
+      set({
+        documents: data
+          .map(toDocItem)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      });
+    } finally {
+      set({ isLoadingDocuments: false });
+    }
+  },
+
+  loadMyDocuments: async () => {
+    set({ isLoadingDocuments: true });
+
+    try {
+      const data = await getMyDocuments();
 
       set({
         documents: data

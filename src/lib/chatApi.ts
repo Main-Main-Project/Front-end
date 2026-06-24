@@ -125,3 +125,14 @@ export async function getDocuments(sessionId: string) {
 
     return data as UploadedDocumentDto[];
 }
+
+export async function getMyDocuments() {
+    const response = await apiFetch("/chat/documents");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "문서함 조회에 실패했습니다.");
+    }
+
+    return data as UploadedDocumentDto[];
+}
