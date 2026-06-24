@@ -19,6 +19,52 @@ function formatChatTime(value: string) {
   });
 }
 
+// assistant 답변을 한 글자씩 보여 주는 타이핑 애니메이션 컴포넌트
+function TypingText({
+  text,
+  shouldAnimate,
+  speed = 20,
+  onDone,
+}: {
+  text: string;
+  shouldAnimate: boolean;
+  speed?: number;
+  onDone?: () => void;
+}) {
+  const [visibleText, setVisibleText] = useState(shouldAnimate ? "" : text);
+
+  useEffect(() => {
+    if (!shouldAnimate) {
+      setVisibleText(text);
+      return;
+    }
+
+    setVisibleText("");
+
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setVisibleText(text.slice(0, index));
+
+      if (index >= text.length) {
+        window.clearInterval(timer);
+        onDone?.();
+      }
+    }, speed);
+
+    return () => window.clearInterval(timer);
+  }, [text, shouldAnimate, speed, onDone]);
+
+  const isTyping = shouldAnimate && visibleText.length < text.length;
+
+  return (
+    <p className="whitespace-pre-wrap">
+      {visibleText}
+      {isTyping ? <span className="animate-pulse">|</span> : null}
+    </p>
+  );
+}
+
 export function ChatPage() {
   const {
     sessions,
@@ -47,6 +93,7 @@ export function ChatPage() {
   const activeComposerRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const animatedMessageIdsRef = useRef(new Set<string>());
   const wasNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -57,6 +104,7 @@ export function ChatPage() {
 
   const MAX_TEXTAREA_HEIGHT = 200;
 
+  // 입력창 높이를 내용에 맞춰 자동으로 조절하되 최대 높이는 제한한다.
   const resizeTextarea = (textarea: HTMLTextAreaElement | null) => {
     if (!textarea) return;
 
@@ -73,6 +121,7 @@ export function ChatPage() {
     resizeTextarea(activeComposerRef.current);
   }, [draft, activeSessionId]);
 
+  // 입력 중이던 질문이 비워지면 문서 드래그 차단 상태도 함께 해제한다.
   useEffect(() => {
     if (draft.trim().length === 0) {
       setDragBlocked(false);
@@ -83,6 +132,7 @@ export function ChatPage() {
     setPendingFiles([]);
   }, [activeSessionId]);
 
+  // 활성 세션이 바뀌면 해당 세션의 업로드 문서 목록을 다시 불러온다.
   useEffect(() => {
     if (!activeSessionId) {
       clearDocuments();
@@ -92,6 +142,7 @@ export function ChatPage() {
     void loadDocuments(activeSessionId);
   }, [activeSessionId, loadDocuments, clearDocuments]);
 
+  // 전송 전 대기 중인 첨부 문서 목록을 입력창 위에 카드 형태로 보여 준다.
   const renderAttachedDocumentCards = () => {
     if (pendingFiles.length === 0) return null;
 
@@ -158,6 +209,7 @@ export function ChatPage() {
     );
   };
 
+  // 메시지 영역의 실제 스크롤 viewport를 찾아 자동 스크롤 여부를 제어한다.
   const getScrollViewport = () =>
     scrollAreaRef.current?.querySelector(
       "[data-radix-scroll-area-viewport]"
@@ -223,6 +275,7 @@ export function ChatPage() {
     ? (messagesBySession[activeSessionId] ?? [])
     : pendingNewChatMessages;
 
+  // 세션 전환 시 이전 스크롤 상태가 섞이지 않도록 관련 값을 초기화한다.
   useEffect(() => {
     prevMessageCountRef.current = 0;
     wasNearBottomRef.current = true;
@@ -245,6 +298,7 @@ export function ChatPage() {
     };
   }, [activeSessionId]);
 
+  // 새 메시지가 추가되면 사용자가 하단에 있을 때만 자동으로 맨 아래로 이동한다.
   useEffect(() => {
     if (messages.length === 0) {
       prevMessageCountRef.current = 0;
@@ -279,7 +333,7 @@ export function ChatPage() {
     }
   }, [isSending]);
 
-  // 숨겨진 file input을 버튼으로 트리거하기 위한 헬퍼.
+  // 숨겨진 파일 입력창을 열어 문서 첨부를 시작한다.
   const triggerUpload = () => {
     if (isSending || isUploading || draft.trim().length > 0) return;
     fileInputRef.current?.click();
@@ -330,6 +384,7 @@ export function ChatPage() {
     });
   };
 
+  // 질문 입력 상태에서는 문서 드래그를 막고, 그 외에는 드롭 업로드를 허용한다.
   const hasFiles = (e: React.DragEvent<HTMLDivElement>) => {
     return Array.from(e.dataTransfer.types).includes("Files");
   };
@@ -407,6 +462,8 @@ export function ChatPage() {
     handleFiles(e.dataTransfer.files);
   };
 
+  // 텍스트 질문 전송과 문서 업로드를 한 곳에서 처리한다.
+  // 문서와 질문은 동시에 전송하지 않도록 분기한다.
   const handleSendMessage = async () => {
     if (isSending || isUploading) return;
 
@@ -592,7 +649,7 @@ export function ChatPage() {
       )}
 
       {!activeSession && messages.length === 0 ? (
-        // 활성 세션이 없으면 "첫 질문" 빈 상태 화면을 보여준다.
+        // 활성 세션이 없고 메시지도 없으면 첫 질문 입력용 빈 상태 화면을 보여 준다.
         <div className="flex flex-1 flex-col items-center justify-center p-6">
           <h2 className="mb-6 text-center text-3xl font-semibold">무엇을 도와드릴까요?</h2>
           <div className="w-full max-w-3xl">
@@ -636,8 +693,8 @@ export function ChatPage() {
             </div>
           </div>
         </div>
+      // 세션이 있으면 메시지 타임라인과 하단 입력창을 함께 렌더링한다.
       ) : (
-        // 세션이 있으면 메시지 타임라인 + 하단 컴포저를 렌더링한다.
         <>
           <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-6 md:px-10">
             <div className="mx-auto w-full max-w-4xl space-y-8">
@@ -680,19 +737,33 @@ export function ChatPage() {
                             })}
                           </div>
                         )}
-
+                        {/* assistant 메시지가 아직 완성되지 않았으면 로딩 버블을 먼저 보여 준다. */}
                         {message.pending && message.role === "assistant" ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-foreground/80">{message.content || "답변 생성 중"}</span>
+                            <span className="text-sm text-foreground/80">
+                              {message.content || "답변 생성 중"}
+                            </span>
                             <div className="flex items-center gap-1">
                               <span className="size-2 rounded-full bg-foreground/50 animate-bounce" />
                               <span className="size-2 rounded-full bg-foreground/50 animate-bounce [animation-delay:0.15s]" />
                               <span className="size-2 rounded-full bg-foreground/50 animate-bounce [animation-delay:0.3s]" />
                             </div>
                           </div>
-                        ) : (
-                          message.content && <p>{message.content}</p>
-                        )}
+                        ) : message.content ? (
+                          // 새로 도착한 assistant 답변만 타이핑 애니메이션으로 출력한다.
+                          message.role === "assistant" ? (
+                            <TypingText
+                              text={message.content}
+                              shouldAnimate={Boolean(message.animateOnMount) && !animatedMessageIdsRef.current.has(message.id)
+}
+                              onDone={() => {
+                                animatedMessageIdsRef.current.add(message.id);
+                              }}
+                            />
+                          ) : (
+                            <p className="whitespace-pre-wrap">{message.content}</p>
+                          )
+                        ) : null}
                       </div>
 
                       <span className="mt-2 block text-[11px] opacity-70">
@@ -701,6 +772,7 @@ export function ChatPage() {
                     </div>
                   </div>
 
+                  {/* 마지막 user 메시지 전송 직후에는 assistant 답변이 오기 전까지 임시 로딩 버블을 보여 준다. */}
                   {message.pending &&
                     message.role === "user" &&
                     index === messages.length - 1 &&
@@ -725,6 +797,7 @@ export function ChatPage() {
             </div>
           </ScrollArea>
 
+          {/* 사용자가 위로 스크롤한 경우에만 하단 이동 버튼을 노출한다. */}
           {showScrollToBottom && !isRestoringSessionScroll && (
             <div className="pointer-events-none absolute bottom-44 left-1/2 -translate-x-1/2">
               <Button

@@ -15,6 +15,7 @@ type UiMessage = {
   createdAt: string;
   pending?: boolean;
   attachments?: UploadedAttachment[];
+  animateOnMount?: boolean;
 };
 
 type UiSession = {
@@ -159,6 +160,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               role: "assistant",
               content: msg.answer,
               createdAt: msg.answer_at ?? msg.question_at,
+              animateOnMount: false,
             });
           }
 
@@ -380,6 +382,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                       role: "assistant" as const,
                       content: data.answer ?? "",
                       createdAt: data.answer_at ?? new Date().toISOString(),
+                      animateOnMount: true,
                     },
                   ],
                 },
