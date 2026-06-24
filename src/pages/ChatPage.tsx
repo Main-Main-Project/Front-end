@@ -527,7 +527,7 @@ export function ChatPage() {
           appendLocalMessage(sessionId, {
             id: summaryMessageId,
             role: "assistant",
-            content: "답변 생성 중",
+            content: "문서 요약 중",
             createdAt: now,
             pending: true,
           });
@@ -542,6 +542,7 @@ export function ChatPage() {
             updateMessage(sessionId, summaryMessageId, {
               content: uploaded.summary?.trim() || "요약 결과가 없습니다.",
               pending: false,
+              animateOnMount: true,
             });
           } catch (error) {
             removeMessage(sessionId, documentMessageId);
