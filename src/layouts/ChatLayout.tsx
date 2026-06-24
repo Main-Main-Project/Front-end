@@ -260,7 +260,11 @@ export function ChatLayout() {
                       : "text-mutedForeground hover:bg-muted/70 hover:text-foreground"
                   }`}
                 >
-                  <p className="truncate font-medium">{session.title}</p>
+                  {session.title === "__uploading__" ? (
+                    <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                  ) : (
+                    <p className="truncate font-medium">{session.title}</p>
+                  )}
                   <p className="mt-1 text-xs opacity-80">{session.updatedAt}</p>
                 </button>
               ))}
@@ -327,7 +331,11 @@ export function ChatLayout() {
                 onClick={() => openSession(session.id)}
                 className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
               >
-                <p className="truncate">{session.title}</p>
+                {session.title === "__uploading__" ? (
+                  <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                ) : (
+                  <p className="truncate">{session.title}</p>
+                )}
               </button>
             ))}
           </div>
