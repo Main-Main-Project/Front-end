@@ -66,7 +66,19 @@ export const systemStatusLabel: Record<AdminSystemStatus["status"], string> = {
   offline: "오프라인",
 };
 
-export function getAdminStats(documentCount: number) {
+export function getAdminStats({
+  documentCount,
+  todayQuestionCount,
+  failedDocumentCount,
+  todayQuestionDetail,
+  failedDocumentDetail,
+}: {
+  documentCount: number;
+  todayQuestionCount: number;
+  failedDocumentCount: number;
+  todayQuestionDetail: string;
+  failedDocumentDetail: string;
+}) {
   return [
     {
       label: "총 사용자 수",
@@ -80,9 +92,9 @@ export function getAdminStats(documentCount: number) {
     },
     {
       label: "오늘 질문 수",
-      value: "856",
+      value: String(todayQuestionCount),
       unit: "건",
-      detail: "전일 대비 +12.5%",
+      detail: todayQuestionDetail,
       accent: "from-emerald-50 to-teal-50",
       iconColor: "text-emerald-600",
       iconWrap: "bg-emerald-100",
@@ -100,9 +112,9 @@ export function getAdminStats(documentCount: number) {
     },
     {
       label: "실패 건수",
-      value: "4",
+      value: String(failedDocumentCount),
       unit: "건",
-      detail: "전일 대비 -11.1%",
+      detail: failedDocumentDetail,
       accent: "from-rose-50 to-pink-50",
       iconColor: "text-rose-600",
       iconWrap: "bg-rose-100",
