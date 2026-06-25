@@ -1,12 +1,20 @@
 ﻿import { create } from "zustand";
 import { type DocItem, type DocumentStatus } from "@/types/document";
-import { getDocuments, getMyDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
+import {
+  deleteMyDocument,
+  getDocuments,
+  getMyDocuments,
+  type DeleteDocumentResponseDto,
+  type UploadedDocumentDto,
+} from "@/lib/chatApi";
 
 type DocumentState = {
   documents: DocItem[];
   isLoadingDocuments: boolean;
+  isDeletingDocument: boolean;
   loadDocuments: (sessionId: string) => Promise<void>;
   loadMyDocuments: () => Promise<void>;
+  removeDocument: (documentId: string) => Promise<DeleteDocumentResponseDto>;
   addUploadedDocument: (document: UploadedDocumentDto) => void;
   clearDocuments: () => void;
 };
@@ -44,17 +52,19 @@ function mapDocumentStatus(status: UploadedDocumentDto["status"]): DocumentStatu
 function toDocItem(document: UploadedDocumentDto): DocItem {
   return {
     id: document.document_id,
+    sessionId: document.session_id,
     name: document.file_name,
     status: mapDocumentStatus(document.status),
     summary: document.summary?.trim() || "요약 없음",
     uploadedAt: formatUploadedAt(document.created_at),
     createdAt: document.created_at,
   };
-}
+} 
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   documents: [],
   isLoadingDocuments: false,
+  isDeletingDocument: false,
 
   loadDocuments: async (sessionId) => {
     set({ isLoadingDocuments: true });
@@ -85,6 +95,22 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       });
     } finally {
       set({ isLoadingDocuments: false });
+    }
+  },
+
+  removeDocument: async (documentId) => {
+    set({ isDeletingDocument: true });
+
+    try {
+      const result = await deleteMyDocument(documentId);
+
+      set((state) => ({
+        documents: state.documents.filter((item) => item.id !== documentId),
+      }));
+
+      return result;
+    } finally {
+      set({ isDeletingDocument: false });
     }
   },
 

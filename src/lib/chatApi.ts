@@ -126,6 +126,24 @@ export async function getDocuments(sessionId: string) {
     return data as UploadedDocumentDto[];
 }
 
+export type DeleteDocumentResponseDto = {
+    message: string;
+    chat_session_deleted: boolean;
+};
+
+export async function deleteMyDocument(documentId: string) {
+    const response = await apiFetch(`/chat/${documentId}/document`, {
+        method: "DELETE",
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "문서 삭제에 실패했습니다.");
+    }
+
+    return data as DeleteDocumentResponseDto;
+}
+
 export async function getMyDocuments() {
     const response = await apiFetch("/chat/documents");
     const data = await response.json();

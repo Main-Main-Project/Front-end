@@ -8,6 +8,7 @@ export type DocumentStatus =
 
 export type DocItem = {
     id: string;
+    sessionId: string;
     name: string;
     status: DocumentStatus;
     summary: string;
