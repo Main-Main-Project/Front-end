@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { type DocumentStatus, type DocItem } from "@/data/mock";
+import { type DocumentStatus, type DocItem } from "@/types/document";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -80,10 +80,14 @@ export function DocumentsPage() {
                 }`}
               >
                 <p className="truncate text-sm font-medium">{doc.name}</p>
-                <div className="mt-2 flex items-center justify-between">
+
+                <div className="mt-2">
                   <Badge variant={statusVariant[doc.status]}>{doc.status}</Badge>
-                  <span className="text-xs text-mutedForeground">{doc.updatedAt}</span>
                 </div>
+
+                <p className="mt-2 text-xs text-mutedForeground">
+                  {doc.uploadedAt}
+                </p>
               </button>
             ))}
           </div>
@@ -93,7 +97,13 @@ export function DocumentsPage() {
       <Card className="p-6">
         <h2 className="text-xl font-semibold">문서 요약</h2>
         <p className="mt-2 text-sm text-mutedForeground">{selected.name}</p>
-        <div className="mt-6 rounded-xl border border-border bg-muted/50 p-4 text-sm leading-7">{selected.summary}</div>
+        <div className="mt-3 flex items-center gap-3 text-sm text-mutedForeground">
+          <Badge variant={statusVariant[selected.status]}>{selected.status}</Badge>
+          <span>업로드: {selected.uploadedAt}</span>
+        </div>
+        <div className="mt-6 rounded-xl border border-border bg-muted/50 p-4 text-sm leading-7">
+          {selected.summary}
+        </div>
       </Card>
     </div>
   );

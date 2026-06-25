@@ -1,5 +1,5 @@
 ﻿import { create } from "zustand";
-import { type DocItem, type DocumentStatus } from "@/data/mock";
+import { type DocItem, type DocumentStatus } from "@/types/document";
 import { getDocuments, getMyDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
 
 type DocumentState = {
@@ -10,6 +10,17 @@ type DocumentState = {
   addUploadedDocument: (document: UploadedDocumentDto) => void;
   clearDocuments: () => void;
 };
+
+function formatUploadedAt(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
 
 function mapDocumentStatus(status: UploadedDocumentDto["status"]): DocumentStatus {
   switch (status) {
@@ -35,8 +46,9 @@ function toDocItem(document: UploadedDocumentDto): DocItem {
     id: document.document_id,
     name: document.file_name,
     status: mapDocumentStatus(document.status),
-    summary: document.summary?.trim() || "업로드 완료",
-    updatedAt: document.created_at.slice(0, 10),
+    summary: document.summary?.trim() || "요약 없음",
+    uploadedAt: formatUploadedAt(document.created_at),
+    createdAt: document.created_at,
   };
 }
 
@@ -53,7 +65,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         documents: data
           .map(toDocItem)
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       });
     } finally {
       set({ isLoadingDocuments: false });
@@ -69,7 +81,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         documents: data
           .map(toDocItem)
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       });
     } finally {
       set({ isLoadingDocuments: false });
