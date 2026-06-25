@@ -99,25 +99,17 @@ function buildQuestionTrend(messages: MessageDto[]) {
   return result;
 }
 
-function mapAdminDocumentStatus(
-  status: "UPLOADED" | "OCR_DONE" | "CHUNKED" | "EMBEDDED" | "READY" | "FAILED"
-): AdminDocumentStatus {
-  switch (status) {
-    case "UPLOADED":
-      return "uploaded";
-    case "OCR_DONE":
-      return "ocr_done";
-    case "CHUNKED":
-      return "chunked";
-    case "EMBEDDED":
-      return "embedded";
-    case "READY":
-      return "ready";
-    case "FAILED":
-      return "failed";
-    default:
-      return "uploaded";
-  }
+const ADMIN_DOCUMENT_STATUS_MAP: Record<UploadedDocumentDto["status"], AdminDocumentStatus> = {
+  UPLOADED: "uploaded",
+  OCR_DONE: "ocr_done",
+  CHUNKED: "chunked",
+  EMBEDDED: "embedded",
+  READY: "ready",
+  FAILED: "failed",
+};
+
+function mapAdminDocumentStatus(status: UploadedDocumentDto["status"]): AdminDocumentStatus {
+  return ADMIN_DOCUMENT_STATUS_MAP[status];
 }
 
 function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
