@@ -155,6 +155,28 @@ export async function getMyDocuments() {
     return data as UploadedDocumentDto[];
 }
 
+export async function getAdminSessions() {
+    const response = await apiFetch("/admin/sessions");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 세션 목록 조회에 실패했습니다.");
+    }
+
+    return data as SessionDto[];
+}
+
+export async function getAdminMessages() {
+    const response = await apiFetch("/admin/messages");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 메시지 목록 조회에 실패했습니다.");
+    }
+
+    return data as MessageDto[];
+}
+
 export async function getAdminDocuments() {
     const response = await apiFetch("/admin/documents");
     const data = await response.json();

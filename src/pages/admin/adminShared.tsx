@@ -120,15 +120,6 @@ export {
   mockQuestionTrend,
 };
 
-export function AdminPageIntro({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="space-y-1">
-      <h1 className="text-[28px] font-semibold tracking-tight text-slate-900">{title}</h1>
-      <p className="text-sm text-slate-500">{description}</p>
-    </div>
-  );
-}
-
 export function SurfaceCard({
   title,
   description,
@@ -313,7 +304,7 @@ export function AdminTable({ headers, children }: { headers: string[]; children:
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200">
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full table-fixed text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               {headers.map((header) => (
@@ -344,10 +335,17 @@ export function FailureLogList() {
   );
 }
 
-export function ChatMiniTable() {
+export type AdminChatMiniRow = {
+  id: string;
+  userName: string;
+  question: string;
+  answerTime: string;
+};
+
+export function ChatMiniTable({ chats }: { chats: AdminChatMiniRow[] }) {
   return (
     <AdminTable headers={["사용자", "질문", "답변 시간"]}>
-      {mockAdminChats.map((entry) => (
+      {chats.map((entry) => (
         <tr key={entry.id}>
           <td className="px-5 py-4 font-medium text-slate-800">{entry.userName}</td>
           <td className="px-5 py-4 text-slate-600">{entry.question}</td>

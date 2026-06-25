@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getAdminDocuments, deleteAdminDocument, type UploadedDocumentDto } from "@/lib/chatApi";
 import { showToast } from "@/stores/notificationStore";
 import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
-import { AdminPageIntro, documentStatusLabel, DocumentRow, SurfaceCard } from "@/pages/admin/adminShared";
+import { documentStatusLabel, DocumentRow, SurfaceCard } from "@/pages/admin/adminShared";
 
 const statusTabs: Array<{ key: "all" | AdminDocumentStatus; label: string }> = [
   { key: "all", label: "전체" },
@@ -165,8 +165,6 @@ export function AdminDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageIntro title="문서 관리" description="업로드, OCR, 임베딩, 실패 파이프라인 상태를 한 화면에서 확인합니다." />
-
       <SurfaceCard
         title="문서 파이프라인"
         description="상태 탭과 검색을 조합해 원하는 문서만 빠르게 확인할 수 있습니다."

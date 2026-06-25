@@ -7,7 +7,6 @@ import {
   LucideIcon,
   Menu,
   MessageSquare,
-  Search,
   Shield,
   Users,
   X,
@@ -149,13 +148,6 @@ export function AdminLayout() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">Admin Panel</p>
               <h1 className="truncate text-xl font-semibold text-slate-900">{currentTitle}</h1>
-            </div>
-
-            <div className="hidden max-w-sm flex-1 md:block">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <Input placeholder="사용자, 문서, 로그 검색" className="h-11 rounded-2xl border-slate-200 bg-slate-50 pl-11" />
-              </div>
             </div>
 
             <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 md:flex">

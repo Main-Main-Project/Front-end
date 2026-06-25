@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { getAdminDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
+import { getAdminDocuments, getAdminMessages, type MessageDto, type UploadedDocumentDto } from "@/lib/chatApi";
 import { showToast } from "@/stores/notificationStore";
 import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
 import {
   ActivityFeed,
-  AdminPageIntro,
   getAdminStats,
   ChatMiniTable,
   DocumentMiniTable,
@@ -19,6 +18,13 @@ import {
   TrendChart,
 } from "@/pages/admin/adminShared";
 
+type AdminChatMiniRow = {
+  id: string;
+  userName: string;
+  question: string;
+  answerTime: string;
+};
+
 function formatUploadedAt(value: string) {
   return new Date(value).toLocaleString("ko-KR", {
     year: "numeric",
@@ -28,6 +34,16 @@ function formatUploadedAt(value: string) {
     minute: "2-digit",
     hour12: false,
   });
+}
+
+function formatTime(value: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hh}:${mm}`;
 }
 
 function mapAdminDocumentStatus(
@@ -67,6 +83,7 @@ function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
 
 export function AdminDashboardPage() {
   const [documents, setDocuments] = useState<AdminDocumentRow[]>([]);
+  const [recentChats, setRecentChats] = useState<AdminChatMiniRow[]>([]);
   const adminStats = getAdminStats(documents.length);
 
   useEffect(() => {
@@ -91,10 +108,36 @@ export function AdminDashboardPage() {
     void fetchDocuments();
   }, []);
 
+  useEffect(() => {
+    const fetchRecentChats = async () => {
+      try {
+        const data = await getAdminMessages();
+
+        setRecentChats(
+          data
+            .sort((a, b) => new Date(b.question_at).getTime() - new Date(a.question_at).getTime())
+            .slice(0, 11)
+            .map((item) => ({
+              id: item.message_id,
+              userName: item.user_id.slice(0, 8),
+              question: item.question,
+              answerTime: formatTime(item.answer_at),
+            }))
+        );
+      } catch (error) {
+        showToast({
+          title: "최근 질문 조회 실패",
+          description: error instanceof Error ? error.message : "대시보드 질문 목록을 불러오지 못했습니다.",
+          tone: "error",
+        });
+      }
+    };
+
+    void fetchRecentChats();
+  }, []);
+
   return (
     <div className="space-y-6">
-      <AdminPageIntro title="대시보드" description="사용자 현황, 문서 처리, 최근 채팅, 시스템 상태를 한 화면에서 확인합니다." />
-
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {adminStats.map((item) => (
           <StatCard key={item.label} {...item} />
@@ -120,8 +163,8 @@ export function AdminDashboardPage() {
           <DocumentMiniTable documents={documents.slice(0, 5)} />
         </SurfaceCard>
 
-        <SurfaceCard title="최근 질문 / 답변" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="채팅 열기" to="/admin/chats" />}>
-          <ChatMiniTable />
+        <SurfaceCard title="최근 질문" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="채팅 열기" to="/admin/chats" />}>
+          <ChatMiniTable chats={recentChats}/>
         </SurfaceCard>
 
         <SurfaceCard title="실패 로그" description="우선 확인이 필요한 항목입니다." action={<PageLinkHint label="확인하기" to="/admin/documents?status=failed" />}>
