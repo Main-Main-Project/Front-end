@@ -7,6 +7,7 @@ import {
   type DeleteDocumentResponseDto,
   type UploadedDocumentDto,
 } from "@/lib/chatApi";
+import { showToast } from "@/stores/notificationStore";
 
 type DocumentState = {
   documents: DocItem[];
@@ -75,8 +76,15 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         documents: data
           .map(toDocItem)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       });
+    } catch (error) {
+      showToast({
+        title: "문서 조회 실패",
+        description: error instanceof Error ? error.message : "세션 문서 목록을 불러오지 못했습니다.",
+        tone: "error",
+      });
+      throw error;
     } finally {
       set({ isLoadingDocuments: false });
     }
@@ -91,8 +99,15 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         documents: data
           .map(toDocItem)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       });
+    } catch (error) {
+      showToast({
+        title: "문서 조회 실패",
+        description: error instanceof Error ? error.message : "문서 목록을 불러오지 못했습니다.",
+        tone: "error",
+      });
+      throw error;
     } finally {
       set({ isLoadingDocuments: false });
     }
