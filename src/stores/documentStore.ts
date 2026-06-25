@@ -1,14 +1,35 @@
 ﻿import { create } from "zustand";
-import { type DocItem, type DocumentStatus } from "@/data/mock";
-import { getDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
+import { type DocItem, type DocumentStatus } from "@/types/document";
+import {
+  deleteMyDocument,
+  getDocuments,
+  getMyDocuments,
+  type DeleteDocumentResponseDto,
+  type UploadedDocumentDto,
+} from "@/lib/chatApi";
+import { showToast } from "@/stores/notificationStore";
 
 type DocumentState = {
   documents: DocItem[];
   isLoadingDocuments: boolean;
+  isDeletingDocument: boolean;
   loadDocuments: (sessionId: string) => Promise<void>;
+  loadMyDocuments: () => Promise<void>;
+  removeDocument: (documentId: string) => Promise<DeleteDocumentResponseDto>;
   addUploadedDocument: (document: UploadedDocumentDto) => void;
   clearDocuments: () => void;
 };
+
+function formatUploadedAt(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
 
 function mapDocumentStatus(status: UploadedDocumentDto["status"]): DocumentStatus {
   switch (status) {
@@ -32,16 +53,19 @@ function mapDocumentStatus(status: UploadedDocumentDto["status"]): DocumentStatu
 function toDocItem(document: UploadedDocumentDto): DocItem {
   return {
     id: document.document_id,
+    sessionId: document.session_id,
     name: document.file_name,
     status: mapDocumentStatus(document.status),
-    summary: document.summary?.trim() || "업로드 완료",
-    updatedAt: document.created_at.slice(0, 10),
+    summary: document.summary?.trim() || "요약 없음",
+    uploadedAt: formatUploadedAt(document.created_at),
+    createdAt: document.created_at,
   };
-}
+} 
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   documents: [],
   isLoadingDocuments: false,
+  isDeletingDocument: false,
 
   loadDocuments: async (sessionId) => {
     set({ isLoadingDocuments: true });
@@ -52,10 +76,56 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         documents: data
           .map(toDocItem)
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       });
+    } catch (error) {
+      showToast({
+        title: "문서 조회 실패",
+        description: error instanceof Error ? error.message : "세션 문서 목록을 불러오지 못했습니다.",
+        tone: "error",
+      });
+      throw error;
     } finally {
       set({ isLoadingDocuments: false });
+    }
+  },
+
+  loadMyDocuments: async () => {
+    set({ isLoadingDocuments: true });
+
+    try {
+      const data = await getMyDocuments();
+
+      set({
+        documents: data
+          .map(toDocItem)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      });
+    } catch (error) {
+      showToast({
+        title: "문서 조회 실패",
+        description: error instanceof Error ? error.message : "문서 목록을 불러오지 못했습니다.",
+        tone: "error",
+      });
+      throw error;
+    } finally {
+      set({ isLoadingDocuments: false });
+    }
+  },
+
+  removeDocument: async (documentId) => {
+    set({ isDeletingDocument: true });
+
+    try {
+      const result = await deleteMyDocument(documentId);
+
+      set((state) => ({
+        documents: state.documents.filter((item) => item.id !== documentId),
+      }));
+
+      return result;
+    } finally {
+      set({ isDeletingDocument: false });
     }
   },
 

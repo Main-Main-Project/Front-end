@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { AdminPageIntro, AdminTable, mockAdminUsers, RoleBadge, SurfaceCard, UserStatusBadge } from "@/pages/admin/adminShared";
+import { AdminTable, mockAdminUsers, RoleBadge, SurfaceCard, UserStatusBadge } from "@/pages/admin/adminShared";
 
 export function AdminUsersPage() {
   const [search, setSearch] = useState("");
@@ -14,7 +14,6 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageIntro title="사용자 관리" description="계정 상태와 관리자 권한 여부를 한눈에 확인할 수 있습니다." />
 
       <SurfaceCard
         title="사용자 목록"

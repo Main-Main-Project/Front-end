@@ -10,6 +10,10 @@
   border-color: theme("colors.border");
 }
 
+html {
+  overflow-y: scroll;
+}
+
 body {
   @apply bg-background text-foreground antialiased;
   font-family: "Inter", "Segoe UI", sans-serif;
