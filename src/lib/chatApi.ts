@@ -154,3 +154,27 @@ export async function getMyDocuments() {
 
     return data as UploadedDocumentDto[];
 }
+
+export async function getAdminDocuments() {
+    const response = await apiFetch("/admin/documents");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 문서 목록 조회에 실패했습니다.");
+    }
+
+    return data as UploadedDocumentDto[];
+}
+
+export async function deleteAdminDocument(documentId: string) {
+    const response = await apiFetch(`/admin/${documentId}/document`, {
+        method: "DELETE",
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 문서 삭제에 실패했습니다.");
+    }
+
+    return data as DeleteDocumentResponseDto;
+}

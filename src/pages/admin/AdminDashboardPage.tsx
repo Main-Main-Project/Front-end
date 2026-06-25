@@ -1,7 +1,11 @@
+import { useEffect, useState } from "react";
+import { getAdminDocuments, type UploadedDocumentDto } from "@/lib/chatApi";
+import { showToast } from "@/stores/notificationStore";
+import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
 import {
   ActivityFeed,
   AdminPageIntro,
-  adminStats,
+  getAdminStats,
   ChatMiniTable,
   DocumentMiniTable,
   FailureLogList,
@@ -15,7 +19,78 @@ import {
   TrendChart,
 } from "@/pages/admin/adminShared";
 
+function formatUploadedAt(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function mapAdminDocumentStatus(
+  status: "UPLOADED" | "OCR_DONE" | "CHUNKED" | "EMBEDDED" | "READY" | "FAILED"
+): AdminDocumentStatus {
+  switch (status) {
+    case "UPLOADED":
+      return "uploaded";
+    case "OCR_DONE":
+      return "ocr_done";
+    case "CHUNKED":
+      return "chunked";
+    case "EMBEDDED":
+      return "embedded";
+    case "READY":
+      return "ready";
+    case "FAILED":
+      return "failed";
+    default:
+      return "uploaded";
+  }
+}
+
+function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
+  return {
+    id: document.document_id,
+    sessionId: document.session_id,
+    userId: document.user_id,
+    name: document.file_name,
+    status: mapAdminDocumentStatus(document.status),
+    summary: document.summary?.trim() || "요약 없음",
+    uploadedAt: formatUploadedAt(document.created_at),
+    createdAt: document.created_at,
+    failureReason: null,
+  };
+}
+
 export function AdminDashboardPage() {
+  const [documents, setDocuments] = useState<AdminDocumentRow[]>([]);
+  const adminStats = getAdminStats(documents.length);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const data = await getAdminDocuments();
+
+        setDocuments(
+          data
+            .map(toAdminDocumentRow)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        );
+      } catch (error) {
+        showToast({
+          title: "최근 문서 조회 실패",
+          description: error instanceof Error ? error.message : "대시보드 문서 목록을 불러오지 못했습니다.",
+          tone: "error",
+        });
+      }
+    };
+
+    void fetchDocuments();
+  }, []);
+
   return (
     <div className="space-y-6">
       <AdminPageIntro title="대시보드" description="사용자 현황, 문서 처리, 최근 채팅, 시스템 상태를 한 화면에서 확인합니다." />
@@ -42,7 +117,7 @@ export function AdminDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <SurfaceCard title="최근 업로드 문서" description="파이프라인 단계와 실패 사유를 함께 보여줍니다." action={<PageLinkHint label="전체 보기" to="/admin/documents" />}>
-          <DocumentMiniTable />
+          <DocumentMiniTable documents={documents.slice(0, 5)} />
         </SurfaceCard>
 
         <SurfaceCard title="최근 질문 / 답변" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="채팅 열기" to="/admin/chats" />}>

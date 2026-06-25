@@ -13,24 +13,24 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   mockAdminActivities,
   mockAdminChats,
-  mockAdminDocuments,
   mockAdminSystems,
   mockAdminUsers,
   mockFailureLogs,
   mockQuestionTrend,
   type AdminActivityRow,
-  type AdminDocumentRow,
   type AdminSystemStatus,
   type AdminUserRow,
-  type DocumentStatus,
   type TrendPoint,
 } from "@/data/mock";
+import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
 
-export const documentStatusVariant: Record<DocumentStatus, "default" | "success" | "warning" | "danger" | "info"> = {
+
+export const documentStatusVariant: Record<AdminDocumentStatus, "default" | "success" | "warning" | "danger" | "info"> = {
   uploaded: "default",
   ocr_done: "info",
   chunked: "warning",
@@ -39,7 +39,7 @@ export const documentStatusVariant: Record<DocumentStatus, "default" | "success"
   failed: "danger",
 };
 
-export const documentStatusLabel: Record<DocumentStatus, string> = {
+export const documentStatusLabel: Record<AdminDocumentStatus, string> = {
   uploaded: "업로드 완료",
   ocr_done: "OCR 완료",
   chunked: "청킹 완료",
@@ -66,53 +66,54 @@ export const systemStatusLabel: Record<AdminSystemStatus["status"], string> = {
   offline: "오프라인",
 };
 
-export const adminStats = [
-  {
-    label: "총 사용자 수",
-    value: "1,245",
-    unit: "명",
-    detail: "전체 가입 사용자",
-    accent: "from-blue-50 to-indigo-50",
-    iconColor: "text-blue-600",
-    iconWrap: "bg-blue-100",
-    icon: Users,
-  },
-  {
-    label: "오늘 질문 수",
-    value: "856",
-    unit: "건",
-    detail: "전일 대비 +12.5%",
-    accent: "from-emerald-50 to-teal-50",
-    iconColor: "text-emerald-600",
-    iconWrap: "bg-emerald-100",
-    icon: MessageSquare,
-  },
-  {
-    label: "업로드 문서 수",
-    value: "132",
-    unit: "개",
-    detail: "전체 문서 기준",
-    accent: "from-amber-50 to-orange-50",
-    iconColor: "text-amber-600",
-    iconWrap: "bg-amber-100",
-    icon: FileText,
-  },
-  {
-    label: "실패 건수",
-    value: "4",
-    unit: "건",
-    detail: "전일 대비 -11.1%",
-    accent: "from-rose-50 to-pink-50",
-    iconColor: "text-rose-600",
-    iconWrap: "bg-rose-100",
-    icon: ShieldAlert,
-  },
-] as const;
+export function getAdminStats(documentCount: number) {
+  return [
+    {
+      label: "총 사용자 수",
+      value: "1,245",
+      unit: "명",
+      detail: "전체 가입 사용자",
+      accent: "from-blue-50 to-indigo-50",
+      iconColor: "text-blue-600",
+      iconWrap: "bg-blue-100",
+      icon: Users,
+    },
+    {
+      label: "오늘 질문 수",
+      value: "856",
+      unit: "건",
+      detail: "전일 대비 +12.5%",
+      accent: "from-emerald-50 to-teal-50",
+      iconColor: "text-emerald-600",
+      iconWrap: "bg-emerald-100",
+      icon: MessageSquare,
+    },
+    {
+      label: "업로드 문서 수",
+      value: String(documentCount),
+      unit: "개",
+      detail: "전체 문서 기준",
+      accent: "from-amber-50 to-orange-50",
+      iconColor: "text-amber-600",
+      iconWrap: "bg-amber-100",
+      icon: FileText,
+    },
+    {
+      label: "실패 건수",
+      value: "4",
+      unit: "건",
+      detail: "전일 대비 -11.1%",
+      accent: "from-rose-50 to-pink-50",
+      iconColor: "text-rose-600",
+      iconWrap: "bg-rose-100",
+      icon: ShieldAlert,
+    },
+  ] as const;
+}
 
 export {
   mockAdminActivities,
   mockAdminChats,
-  mockAdminDocuments,
   mockAdminSystems,
   mockAdminUsers,
   mockFailureLogs,
@@ -357,15 +358,17 @@ export function ChatMiniTable() {
   );
 }
 
-export function DocumentMiniTable() {
+export function DocumentMiniTable({ documents }: { documents: AdminDocumentRow[] }) {
   return (
-    <AdminTable headers={["문서명", "업데이트", "상태", "실패 사유"]}>
-      {mockAdminDocuments.map((entry) => (
+    <AdminTable headers={["문서명", "업로드", "상태", "실패 사유"]}>
+      {documents.map((entry) => (
         <tr key={entry.id}>
           <td className="px-5 py-4 font-medium text-slate-800">{entry.name}</td>
-          <td className="px-5 py-4 text-slate-500">{entry.updatedAt}</td>
+          <td className="px-5 py-4 text-slate-500">{entry.uploadedAt}</td>
           <td className="px-5 py-4">
-            <Badge variant={documentStatusVariant[entry.status]}>{documentStatusLabel[entry.status]}</Badge>
+            <Badge variant={documentStatusVariant[entry.status]}>
+              {documentStatusLabel[entry.status]}
+            </Badge>
           </td>
           <td className="px-5 py-4 text-slate-500">{entry.failureReason ?? "-"}</td>
         </tr>
@@ -396,7 +399,15 @@ export function RoleBadge({ isAdmin }: { isAdmin: boolean }) {
   return <Badge variant={isAdmin ? "info" : "default"}>{isAdmin ? "관리자" : "일반"}</Badge>;
 }
 
-export function DocumentRow({ document }: { document: AdminDocumentRow }) {
+export function DocumentRow({
+  document,
+  onDelete,
+  isDeleting,
+}: {
+  document: AdminDocumentRow;
+  onDelete: (document: AdminDocumentRow) => void;
+  isDeleting: boolean;
+}) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -407,9 +418,20 @@ export function DocumentRow({ document }: { document: AdminDocumentRow }) {
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-500">{document.summary}</p>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-          <p>업로더: {document.owner}</p>
-          <p className="mt-1">수정일: {document.updatedAt}</p>
+        <div className="flex flex-col gap-3 lg:min-w-[220px]">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <p>업로더 ID: {document.userId}</p>
+            <p className="mt-1">업로드: {document.uploadedAt}</p>
+          </div>
+
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => onDelete(document)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "삭제 중..." : "삭제"}
+          </Button>
         </div>
       </div>
       {document.failureReason ? (
