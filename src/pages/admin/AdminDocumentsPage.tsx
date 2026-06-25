@@ -3,23 +3,99 @@ import { Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { type DocumentStatus } from "@/data/mock";
-import { AdminPageIntro, documentStatusLabel, DocumentRow, mockAdminDocuments, SurfaceCard } from "@/pages/admin/adminShared";
+import { getAdminDocuments, deleteAdminDocument, type UploadedDocumentDto } from "@/lib/chatApi";
+import { showToast } from "@/stores/notificationStore";
+import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
+import { documentStatusLabel, DocumentRow, SurfaceCard } from "@/pages/admin/adminShared";
 
-const statusTabs: Array<{ key: "all" | DocumentStatus; label: string }> = [
+const statusTabs: Array<{ key: "all" | AdminDocumentStatus; label: string }> = [
   { key: "all", label: "전체" },
   { key: "uploaded", label: "업로드" },
   { key: "ocr_done", label: "OCR 완료" },
   { key: "chunked", label: "청킹 완료" },
-  { key: "embedded", label: "임베딩" },
-  { key: "ready", label: "준비 완료" },
+  { key: "embedded", label: "요약 완료" },
   { key: "failed", label: "실패" },
 ];
 
+function formatUploadedAt(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function mapAdminDocumentStatus(
+  status: "UPLOADED" | "OCR_DONE" | "CHUNKED" | "EMBEDDED" | "READY" | "FAILED"
+): AdminDocumentStatus {
+  switch (status) {
+    case "UPLOADED":
+      return "uploaded";
+    case "OCR_DONE":
+      return "ocr_done";
+    case "CHUNKED":
+      return "chunked";
+    case "EMBEDDED":
+      return "embedded";
+    case "READY":
+      return "ready";
+    case "FAILED":
+      return "failed";
+    default:
+      return "uploaded";
+  }
+}
+
+function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
+  return {
+    id: document.document_id,
+    sessionId: document.session_id,
+    userId: document.user_id,
+    name: document.file_name,
+    status: mapAdminDocumentStatus(document.status),
+    summary: document.summary?.trim() || "요약 없음",
+    uploadedAt: formatUploadedAt(document.created_at),
+    createdAt: document.created_at,
+    failureReason: null,
+  };
+}
+
 export function AdminDocumentsPage() {
   const [search, setSearch] = useState("");
-  const [activeStatus, setActiveStatus] = useState<"all" | DocumentStatus>("all");
+  const [activeStatus, setActiveStatus] = useState<"all" | AdminDocumentStatus>("all");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [documents, setDocuments] = useState<AdminDocumentRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      setIsLoading(true);
+
+      try {
+        const data = await getAdminDocuments();
+
+        setDocuments(
+          data
+            .map(toAdminDocumentRow)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        );
+      } catch (error) {
+        showToast({
+          title: "문서 목록 조회 실패",
+          description: error instanceof Error ? error.message : "관리자 문서 목록을 불러오지 못했습니다.",
+          tone: "error",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchDocuments();
+  }, []);
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -30,20 +106,46 @@ export function AdminDocumentsPage() {
     }
   }, [searchParams]);
 
+    const handleDeleteDocument = async (document: AdminDocumentRow) => {
+      const confirmed = window.confirm(`"${document.name}" 문서를 삭제하시겠습니까?`);
+      if (!confirmed) return;
+
+      try {
+        setIsDeleting(true);
+        await deleteAdminDocument(document.id);
+
+        setDocuments((prev) => prev.filter((item) => item.id !== document.id));
+
+        showToast({
+          title: "문서 삭제 완료",
+          description: "관리자 문서가 삭제되었습니다.",
+          tone: "success",
+        });
+      } catch (error) {
+        showToast({
+          title: "문서 삭제 실패",
+          description: error instanceof Error ? error.message : "관리자 문서 삭제 중 오류가 발생했습니다.",
+          tone: "error",
+        });
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
   const filteredDocuments = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return mockAdminDocuments.filter((entry) => {
+    return documents.filter((entry) => {
       const matchesQuery =
         !query ||
         entry.name.toLowerCase().includes(query) ||
-        entry.owner.toLowerCase().includes(query) ||
+        entry.userId.toLowerCase().includes(query) ||
         documentStatusLabel[entry.status].toLowerCase().includes(query);
       const matchesStatus = activeStatus === "all" || entry.status === activeStatus;
       return matchesQuery && matchesStatus;
     });
-  }, [search, activeStatus]);
+  }, [documents, search, activeStatus]);
 
-  const handleStatusChange = (status: "all" | DocumentStatus) => {
+  const handleStatusChange = (status: "all" | AdminDocumentStatus) => {
     setActiveStatus(status);
     if (status === "all") {
       setSearchParams({});
@@ -52,10 +154,16 @@ export function AdminDocumentsPage() {
     setSearchParams({ status });
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-8 text-slate-500">
+        문서를 불러오는 중입니다.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <AdminPageIntro title="문서 관리" description="업로드, OCR, 임베딩, 실패 파이프라인 상태를 한 화면에서 확인합니다." />
-
       <SurfaceCard
         title="문서 파이프라인"
         description="상태 탭과 검색을 조합해 원하는 문서만 빠르게 확인할 수 있습니다."
@@ -82,7 +190,12 @@ export function AdminDocumentsPage() {
 
         <div className="space-y-4">
           {filteredDocuments.map((entry) => (
-            <DocumentRow key={entry.id} document={entry} />
+            <DocumentRow
+              key={entry.id}
+              document={entry}
+              onDelete={handleDeleteDocument}
+              isDeleting={isDeleting}
+            />
           ))}
         </div>
       </SurfaceCard>

@@ -13,38 +13,38 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   mockAdminActivities,
   mockAdminChats,
-  mockAdminDocuments,
   mockAdminSystems,
   mockAdminUsers,
   mockFailureLogs,
   mockQuestionTrend,
   type AdminActivityRow,
-  type AdminDocumentRow,
   type AdminSystemStatus,
   type AdminUserRow,
-  type DocumentStatus,
   type TrendPoint,
 } from "@/data/mock";
+import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
 
-export const documentStatusVariant: Record<DocumentStatus, "default" | "success" | "warning" | "danger" | "info"> = {
+
+export const documentStatusVariant: Record<AdminDocumentStatus, "default" | "success" | "warning" | "danger" | "info"> = {
   uploaded: "default",
   ocr_done: "info",
   chunked: "warning",
-  embedded: "warning",
+  embedded: "success",
   ready: "success",
   failed: "danger",
 };
 
-export const documentStatusLabel: Record<DocumentStatus, string> = {
+export const documentStatusLabel: Record<AdminDocumentStatus, string> = {
   uploaded: "업로드 완료",
   ocr_done: "OCR 완료",
   chunked: "청킹 완료",
-  embedded: "임베딩 중",
-  ready: "준비 완료",
+  embedded: "요약 완료",
+  ready: "요약 완료",
   failed: "실패",
 };
 
@@ -66,67 +66,71 @@ export const systemStatusLabel: Record<AdminSystemStatus["status"], string> = {
   offline: "오프라인",
 };
 
-export const adminStats = [
-  {
-    label: "총 사용자 수",
-    value: "1,245",
-    unit: "명",
-    detail: "전체 가입 사용자",
-    accent: "from-blue-50 to-indigo-50",
-    iconColor: "text-blue-600",
-    iconWrap: "bg-blue-100",
-    icon: Users,
-  },
-  {
-    label: "오늘 질문 수",
-    value: "856",
-    unit: "건",
-    detail: "전일 대비 +12.5%",
-    accent: "from-emerald-50 to-teal-50",
-    iconColor: "text-emerald-600",
-    iconWrap: "bg-emerald-100",
-    icon: MessageSquare,
-  },
-  {
-    label: "업로드 문서 수",
-    value: "132",
-    unit: "개",
-    detail: "전체 문서 기준",
-    accent: "from-amber-50 to-orange-50",
-    iconColor: "text-amber-600",
-    iconWrap: "bg-amber-100",
-    icon: FileText,
-  },
-  {
-    label: "실패 건수",
-    value: "4",
-    unit: "건",
-    detail: "전일 대비 -11.1%",
-    accent: "from-rose-50 to-pink-50",
-    iconColor: "text-rose-600",
-    iconWrap: "bg-rose-100",
-    icon: ShieldAlert,
-  },
-] as const;
+export function getAdminStats({
+  documentCount,
+  todayQuestionCount,
+  failedDocumentCount,
+  todayQuestionDetail,
+  failedDocumentDetail,
+}: {
+  documentCount: number;
+  todayQuestionCount: number;
+  failedDocumentCount: number;
+  todayQuestionDetail: string;
+  failedDocumentDetail: string;
+}) {
+  return [
+    {
+      label: "총 사용자 수",
+      value: "1,245",
+      unit: "명",
+      detail: "전체 가입 사용자",
+      accent: "from-blue-50 to-indigo-50",
+      iconColor: "text-blue-600",
+      iconWrap: "bg-blue-100",
+      icon: Users,
+    },
+    {
+      label: "오늘 질문 수",
+      value: String(todayQuestionCount),
+      unit: "건",
+      detail: todayQuestionDetail,
+      accent: "from-emerald-50 to-teal-50",
+      iconColor: "text-emerald-600",
+      iconWrap: "bg-emerald-100",
+      icon: MessageSquare,
+    },
+    {
+      label: "업로드 문서 수",
+      value: String(documentCount),
+      unit: "개",
+      detail: "전체 문서 기준",
+      accent: "from-amber-50 to-orange-50",
+      iconColor: "text-amber-600",
+      iconWrap: "bg-amber-100",
+      icon: FileText,
+    },
+    {
+      label: "실패 건수",
+      value: String(failedDocumentCount),
+      unit: "건",
+      detail: failedDocumentDetail,
+      accent: "from-rose-50 to-pink-50",
+      iconColor: "text-rose-600",
+      iconWrap: "bg-rose-100",
+      icon: ShieldAlert,
+    },
+  ] as const;
+}
 
 export {
   mockAdminActivities,
   mockAdminChats,
-  mockAdminDocuments,
   mockAdminSystems,
   mockAdminUsers,
   mockFailureLogs,
   mockQuestionTrend,
 };
-
-export function AdminPageIntro({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="space-y-1">
-      <h1 className="text-[28px] font-semibold tracking-tight text-slate-900">{title}</h1>
-      <p className="text-sm text-slate-500">{description}</p>
-    </div>
-  );
-}
 
 export function SurfaceCard({
   title,
@@ -312,7 +316,7 @@ export function AdminTable({ headers, children }: { headers: string[]; children:
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200">
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full table-fixed text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               {headers.map((header) => (
@@ -329,47 +333,150 @@ export function AdminTable({ headers, children }: { headers: string[]; children:
   );
 }
 
+function formatFailureTime(value: string) {
+  const parts = value.split(" ");
+  return parts[1] ?? value;
+}
+
 export function FailureLogList() {
+  const visibleLogs = mockFailureLogs.slice(0, 5);
+  const emptyRows = Math.max(0, 5 - visibleLogs.length);
+
   return (
     <AdminTable headers={["시간", "항목", "사유"]}>
-      {mockFailureLogs.map((entry) => (
-        <tr key={entry.id}>
-          <td className="px-5 py-4 text-slate-500">{entry.timestamp}</td>
-          <td className="px-5 py-4 font-medium text-slate-800">{entry.item}</td>
-          <td className="px-5 py-4 text-slate-500">{entry.reason}</td>
+      {visibleLogs.length === 0 ? (
+        <tr>
+          <td colSpan={3} className="h-[320px] px-5 py-10 text-center text-slate-500">
+            실패 로그가 없습니다.
+          </td>
         </tr>
-      ))}
+      ) : (
+        <>
+          {visibleLogs.map((entry) => {
+            const time = formatFailureTime(entry.timestamp);
+
+            return (
+              <tr key={entry.id}>
+                <td className="w-[72px] whitespace-nowrap px-5 py-4 text-slate-500">
+                  <div className="flex h-[49px] items-center">{time}</div>
+                </td>
+                <td className="w-[100px] px-5 py-4 font-medium text-slate-800">
+                  <div className="flex h-[49px] items-center">
+                    <div className="w-[100px] overflow-hidden text-ellipsis whitespace-nowrap" title={entry.item}>
+                      {entry.item}
+                    </div>
+                  </div>
+                </td>
+                <td className="w-[120px] px-5 py-4 text-slate-500">
+                  <div className="flex h-[49px] items-center">
+                    <div className="w-[120px] overflow-hidden text-ellipsis whitespace-nowrap" title={entry.reason}>
+                      {entry.reason}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+
+          {Array.from({ length: emptyRows }).map((_, index) => (
+            <tr key={`empty-${index}`}>
+              <td className="w-[72px] px-5 py-4">
+                <div className="h-[49px]" />
+              </td>
+              <td className="w-[100px] px-5 py-4">
+                <div className="h-[49px]" />
+              </td>
+              <td className="w-[12px] px-5 py-4">
+                <div className="h-[49px]" />
+              </td>
+            </tr>
+          ))}
+        </>
+      )}
     </AdminTable>
   );
 }
 
-export function ChatMiniTable() {
+export type AdminChatMiniRow = {
+  id: string;
+  userName: string;
+  question: string;
+  answerTime: string;
+};
+
+export function ChatMiniTable({ chats }: { chats: AdminChatMiniRow[] }) {
   return (
     <AdminTable headers={["사용자", "질문", "답변 시간"]}>
-      {mockAdminChats.map((entry) => (
+      {chats.map((entry) => (
         <tr key={entry.id}>
-          <td className="px-5 py-4 font-medium text-slate-800">{entry.userName}</td>
-          <td className="px-5 py-4 text-slate-600">{entry.question}</td>
-          <td className="px-5 py-4 text-slate-500">{entry.answerTime}</td>
+          <td className="w-[120px] whitespace-nowrap px-5 py-4 font-medium text-slate-800">
+            <div className="flex h-[49px] items-center">
+              {entry.userName}
+            </div>
+          </td>
+          <td className="w-[180px] px-5 py-4 text-slate-600">
+            <div className="flex h-[49px] items-center">
+              <div className="w-[130px] overflow-hidden text-ellipsis whitespace-nowrap leading-6" title={entry.question}>
+                {entry.question}
+              </div>
+            </div>
+          </td>
+          <td className="w-[110px] whitespace-nowrap px-5 py-4 text-slate-500">
+            <div className="flex h-[49px] items-center">
+              {entry.answerTime}
+            </div>
+          </td>
         </tr>
       ))}
     </AdminTable>
   );
 }
 
-export function DocumentMiniTable() {
+function formatDashboardUploadedAt(value: string) {
+  const date = new Date(value);
+
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+
+  return {
+    date: `${yyyy}.${mm}.${dd}`,
+    time: `${hh}:${min}`,
+  };
+}
+
+export function DocumentMiniTable({ documents }: { documents: AdminDocumentRow[] }) {
   return (
-    <AdminTable headers={["문서명", "업데이트", "상태", "실패 사유"]}>
-      {mockAdminDocuments.map((entry) => (
-        <tr key={entry.id}>
-          <td className="px-5 py-4 font-medium text-slate-800">{entry.name}</td>
-          <td className="px-5 py-4 text-slate-500">{entry.updatedAt}</td>
-          <td className="px-5 py-4">
-            <Badge variant={documentStatusVariant[entry.status]}>{documentStatusLabel[entry.status]}</Badge>
-          </td>
-          <td className="px-5 py-4 text-slate-500">{entry.failureReason ?? "-"}</td>
-        </tr>
-      ))}
+    <AdminTable headers={["문서명", "업로드", "상태"]}>
+      {documents.map((entry) => {
+        const uploadedAt = formatDashboardUploadedAt(entry.createdAt);
+
+        return (
+          <tr key={entry.id}>
+            <td className="w-[220px] px-5 py-4 font-medium text-slate-800">
+              <div className="w-[130px] overflow-hidden text-ellipsis whitespace-nowrap" title={entry.name}>
+                {entry.name}
+              </div>
+            </td>
+            <td className="w-[120px] px-5 py-4 text-slate-500">
+              <div className="leading-6">
+                <div>{uploadedAt.date}</div>
+                <div>{uploadedAt.time}</div>
+              </div>
+            </td>
+            <td className="w-[120px] px-5 py-4">
+              <Badge
+                variant={documentStatusVariant[entry.status]}
+                className="whitespace-nowrap px-3 py-1"
+              >
+                {documentStatusLabel[entry.status]}
+              </Badge>
+            </td>
+          </tr>
+        );
+      })}
     </AdminTable>
   );
 }
@@ -396,7 +503,15 @@ export function RoleBadge({ isAdmin }: { isAdmin: boolean }) {
   return <Badge variant={isAdmin ? "info" : "default"}>{isAdmin ? "관리자" : "일반"}</Badge>;
 }
 
-export function DocumentRow({ document }: { document: AdminDocumentRow }) {
+export function DocumentRow({
+  document,
+  onDelete,
+  isDeleting,
+}: {
+  document: AdminDocumentRow;
+  onDelete: (document: AdminDocumentRow) => void;
+  isDeleting: boolean;
+}) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -407,9 +522,20 @@ export function DocumentRow({ document }: { document: AdminDocumentRow }) {
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-500">{document.summary}</p>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-          <p>업로더: {document.owner}</p>
-          <p className="mt-1">수정일: {document.updatedAt}</p>
+        <div className="flex flex-col gap-3 lg:min-w-[220px]">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <p>업로더 ID: {document.userId}</p>
+            <p className="mt-1">업로드: {document.uploadedAt}</p>
+          </div>
+
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => onDelete(document)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "삭제 중..." : "삭제"}
+          </Button>
         </div>
       </div>
       {document.failureReason ? (

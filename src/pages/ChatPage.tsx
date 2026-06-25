@@ -497,7 +497,7 @@ export function ChatPage() {
 
           registerSession({
             id: session.session_id,
-            title: session.title,
+            title: "__uploading__",
             updatedAt: session.created_at,
           });
 
@@ -551,7 +551,7 @@ export function ChatPage() {
           }
         }
 
-        touchSession(sessionId);
+        await loadSessions();
 
         showToast({
           title: "문서 업로드 완료",
