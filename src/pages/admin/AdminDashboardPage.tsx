@@ -206,7 +206,7 @@ export function AdminDashboardPage() {
         setRecentChats(
           data
             .sort((a, b) => new Date(b.question_at).getTime() - new Date(a.question_at).getTime())
-            .slice(0, 11)
+            .slice(0, 5)
             .map((item) => ({
               id: item.message_id,
               userName: item.user_id.slice(0, 8),
@@ -249,15 +249,15 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <SurfaceCard title="최근 업로드 문서" description="파이프라인 단계와 실패 사유를 함께 보여줍니다." action={<PageLinkHint label="전체 보기" to="/admin/documents" />}>
+        <SurfaceCard title="최근 업로드 문서" description="파이프라인 단계와 실패 사유를 함께 보여줍니다." action={<PageLinkHint label="전체 보기" to="/admin/documents" />} className="min-h-[520px]">
           <DocumentMiniTable documents={documents.slice(0, 5)} />
         </SurfaceCard>
 
-        <SurfaceCard title="최근 질문" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="채팅 열기" to="/admin/chats" />}>
+        <SurfaceCard title="최근 질문" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="채팅 열기" to="/admin/chats" />} className="min-h-[520px]">
           <ChatMiniTable chats={recentChats}/>
         </SurfaceCard>
 
-        <SurfaceCard title="실패 로그" description="우선 확인이 필요한 항목입니다." action={<PageLinkHint label="확인하기" to="/admin/documents?status=failed" />}>
+        <SurfaceCard title="실패 로그" description="우선 확인이 필요한 항목입니다." action={<PageLinkHint label="확인하기" to="/admin/documents?status=failed" />} className="min-h-[520px]">
           <FailureLogList />
         </SurfaceCard>
       </div>
