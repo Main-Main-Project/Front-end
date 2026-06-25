@@ -13,9 +13,18 @@ const statusVariant: Record<DocumentStatus, "default" | "success" | "warning" | 
   uploaded: "default",
   ocr_done: "info",
   chunked: "warning",
-  embedded: "info",
+  embedded: "success",
   ready: "success",
   failed: "danger",
+};
+
+const statusLabel: Record<DocumentStatus, string> = {
+  uploaded: "업로드 완료",
+  ocr_done: "OCR 완료",
+  chunked: "청크 완료",
+  embedded: "요약 완료",
+  ready: "요약 완료",
+  failed: "실패",
 };
 
 export function DocumentsPage() {
@@ -131,7 +140,7 @@ export function DocumentsPage() {
                 <p className="truncate text-sm font-medium">{doc.name}</p>
 
                 <div className="mt-2">
-                  <Badge variant={statusVariant[doc.status]}>{doc.status}</Badge>
+                  <Badge variant={statusVariant[doc.status]}>{statusLabel[doc.status]}</Badge>
                 </div>
 
                 <p className="mt-2 text-xs text-mutedForeground">
@@ -149,7 +158,7 @@ export function DocumentsPage() {
             <h2 className="text-xl font-semibold">문서 요약</h2>
             <p className="mt-2 truncate text-sm text-mutedForeground">{selected.name}</p>
             <div className="mt-3 flex items-center gap-3 text-sm text-mutedForeground">
-              <Badge variant={statusVariant[selected.status]}>{selected.status}</Badge>
+              <Badge variant={statusVariant[selected.status]}>{statusLabel[selected.status]}</Badge>
               <span>업로드: {selected.uploadedAt}</span>
             </div>
           </div>

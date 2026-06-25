@@ -34,7 +34,7 @@ export const documentStatusVariant: Record<AdminDocumentStatus, "default" | "suc
   uploaded: "default",
   ocr_done: "info",
   chunked: "warning",
-  embedded: "warning",
+  embedded: "success",
   ready: "success",
   failed: "danger",
 };
@@ -43,8 +43,8 @@ export const documentStatusLabel: Record<AdminDocumentStatus, string> = {
   uploaded: "업로드 완료",
   ocr_done: "OCR 완료",
   chunked: "청킹 완료",
-  embedded: "임베딩 중",
-  ready: "준비 완료",
+  embedded: "요약 완료",
+  ready: "요약 완료",
   failed: "실패",
 };
 

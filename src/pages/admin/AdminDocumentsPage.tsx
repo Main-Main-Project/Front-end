@@ -13,8 +13,7 @@ const statusTabs: Array<{ key: "all" | AdminDocumentStatus; label: string }> = [
   { key: "uploaded", label: "업로드" },
   { key: "ocr_done", label: "OCR 완료" },
   { key: "chunked", label: "청킹 완료" },
-  { key: "embedded", label: "임베딩" },
-  { key: "ready", label: "준비 완료" },
+  { key: "embedded", label: "요약 완료" },
   { key: "failed", label: "실패" },
 ];
 
