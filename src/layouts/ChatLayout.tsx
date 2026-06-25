@@ -19,6 +19,18 @@ import { useChatStore } from "@/stores/chatStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
 function isSameDay(a: Date, b: Date) {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -265,7 +277,7 @@ export function ChatLayout() {
                   ) : (
                     <p className="truncate font-medium">{session.title}</p>
                   )}
-                  <p className="mt-1 text-xs opacity-80">{session.updatedAt}</p>
+                  <p className="mt-1 text-xs opacity-80">{formatDateTime(session.updatedAt)}</p>
                 </button>
               ))}
             </div>
