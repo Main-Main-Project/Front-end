@@ -18,6 +18,7 @@ export type MessageDto = {
     message_id: string;
     session_id: string;
     user_id: string;
+    user_name: string;
     question: string;
     answer: string | null;
     is_legal: boolean;
@@ -51,6 +52,29 @@ export type TotalDocumentItemDto = {
 };
 
 export type TotalItemDto = TotalMessageItemDto | TotalDocumentItemDto;
+
+export type AdminUserDto = {
+    user_id: string;
+    email: string;
+    name: string;
+    social: string;
+    user_type: "USER" | "ADMIN";
+    created_at: string;
+};
+
+export type AdminLogDto = {
+    log_id: string;
+    session_id: string | null;
+    user_id: string | null;
+    trace_id: string | null;
+    endpoint: string;
+    method: string;
+    status_code: number;
+    level: string;
+    error_code: string | null;
+    message: string;
+    created_at: string;
+};
 
 export async function createSession() {
     const response = await apiFetch("/chat/session", {
@@ -199,4 +223,37 @@ export async function deleteAdminDocument(documentId: string) {
     }
 
     return data as DeleteDocumentResponseDto;
+}
+
+export async function getAdminUsers() {
+    const response = await apiFetch("/admin/users");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 사용자 목록 조회에 실패했습니다.");
+    }
+
+    return data as AdminUserDto[];
+}
+
+export async function getAdminInfoLogs() {
+    const response = await apiFetch("/admin/logger/info");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 활동 로그 조회에 실패했습니다.");
+    }
+
+  return data as AdminLogDto[];
+}
+
+export async function getAdminErrorLogs() {
+    const response = await apiFetch("/admin/logger/error");
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data?.detail ?? "관리자 에러 로그 조회에 실패했습니다.");
+    }
+
+    return data as AdminLogDto[];
 }

@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { getAdminDocuments, getAdminMessages, type MessageDto, type UploadedDocumentDto } from "@/lib/chatApi";
+import {
+  getAdminDocuments,
+  getAdminMessages,
+  getAdminInfoLogs,
+  getAdminErrorLogs,
+  getAdminUsers,
+  type AdminLogDto,
+  type MessageDto,
+  type UploadedDocumentDto,
+} from "@/lib/chatApi";
 import { showToast } from "@/stores/notificationStore";
 import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
 import {
@@ -8,7 +17,7 @@ import {
   ChatMiniTable,
   DocumentMiniTable,
   FailureLogList,
-  mockAdminActivities,
+  type FailureLogItem,
   mockAdminSystems,
   PageLinkHint,
   StatCard,
@@ -23,6 +32,51 @@ type AdminChatMiniRow = {
   question: string;
   answerTime: string;
 };
+
+type AdminActivityRow = {
+  id: string;
+  icon: "document" | "chat" | "user" | "alert";
+  title: string;
+  timestamp: string;
+};
+
+function formatLogTimestamp(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function getActivityIcon(endpoint: string, level: string): AdminActivityRow["icon"] {
+  const normalized = endpoint.toLowerCase();
+
+  if (level === "ERROR" || level === "WARN") return "alert";
+  if (normalized.includes("document")) return "document";
+  if (normalized.includes("user") || normalized.includes("auth")) return "user";
+  return "chat";
+}
+
+function toActivityRow(log: AdminLogDto): AdminActivityRow {
+  return {
+    id: log.log_id,
+    icon: getActivityIcon(log.endpoint, log.level),
+    title: log.message,
+    timestamp: formatLogTimestamp(log.created_at),
+  };
+}
+
+function toFailureLogRow(log: AdminLogDto): FailureLogItem {
+  return {
+    id: log.log_id,
+    timestamp: formatLogTimestamp(log.created_at),
+    item: log.endpoint,
+    reason: log.message,
+  };
+}
 
 function formatUploadedAt(value: string) {
   return new Date(value).toLocaleString("ko-KR", {
@@ -112,11 +166,15 @@ function mapAdminDocumentStatus(status: UploadedDocumentDto["status"]): AdminDoc
   return ADMIN_DOCUMENT_STATUS_MAP[status];
 }
 
-function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
+function toAdminDocumentRow(
+  document: UploadedDocumentDto,
+  userMap: Map<string, string>
+): AdminDocumentRow {
   return {
     id: document.document_id,
     sessionId: document.session_id,
     userId: document.user_id,
+    userName: userMap.get(document.user_id) ?? "알 수 없음",
     name: document.file_name,
     status: mapAdminDocumentStatus(document.status),
     summary: document.summary?.trim() || "요약 없음",
@@ -128,8 +186,11 @@ function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
 
 export function AdminDashboardPage() {
   const [documents, setDocuments] = useState<AdminDocumentRow[]>([]);
+  const [userCount, setUserCount] = useState(0);
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [recentChats, setRecentChats] = useState<AdminChatMiniRow[]>([]);
+  const [activities, setActivities] = useState<AdminActivityRow[]>([]);
+  const [failureLogs, setFailureLogs] = useState<FailureLogItem[]>([]);
 
   const today = new Date();
   const yesterday = new Date(today);
@@ -161,6 +222,7 @@ export function AdminDashboardPage() {
   );
   
   const adminStats = getAdminStats({
+    userCount,
     documentCount: documents.length,
     todayQuestionCount,
     failedDocumentCount: todayFailedDocumentCount,
@@ -169,13 +231,37 @@ export function AdminDashboardPage() {
   });
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await getAdminUsers();
+        setUserCount(data.length);
+      } catch (error) {
+        showToast({
+          title: "사용자 수 조회 실패",
+          description: error instanceof Error ? error.message : "관리자 사용자 수를 불러오지 못했습니다.",
+          tone: "error",
+        });
+      }
+    };
+
+    void fetchUsers();
+  }, []);
+
+  useEffect(() => {
     const fetchDocuments = async () => {
       try {
-        const data = await getAdminDocuments();
+        const [documentData, userData] = await Promise.all([
+          getAdminDocuments(),
+          getAdminUsers(),
+        ]);
+
+        const userMap = new Map<string, string>(
+          userData.map((user) => [user.user_id, user.name])
+        );
 
         setDocuments(
-          data
-            .map(toAdminDocumentRow)
+          documentData
+            .map((document) => toAdminDocumentRow(document, userMap))
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         );
       } catch (error) {
@@ -201,7 +287,7 @@ export function AdminDashboardPage() {
             .slice(0, 5)
             .map((item) => ({
               id: item.message_id,
-              userName: item.user_id.slice(0, 8),
+              userName: item.user_name,
               question: item.question,
               answerTime: formatTime(item.answer_at),
             }))
@@ -218,6 +304,40 @@ export function AdminDashboardPage() {
     void fetchRecentChats();
   }, []);
 
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const data = await getAdminInfoLogs();
+        setActivities(data.slice(0, 5).map(toActivityRow));
+      } catch (error) {
+        showToast({
+          title: "활동 로그 조회 실패",
+          description: error instanceof Error ? error.message : "관리자 활동 로그를 불러오지 못했습니다.",
+          tone: "error",
+        });
+      }
+    };
+
+    void fetchActivities();
+  }, []);
+
+  useEffect(() => {
+    const fetchFailureLogs = async () => {
+      try {
+        const data = await getAdminErrorLogs();
+        setFailureLogs(data.slice(0, 5).map(toFailureLogRow));
+      } catch (error) {
+        showToast({
+          title: "실패 로그 조회 실패",
+          description: error instanceof Error ? error.message : "관리자 실패 로그를 불러오지 못했습니다.",
+          tone: "error",
+        });
+      }
+    };
+
+    void fetchFailureLogs();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -232,7 +352,7 @@ export function AdminDashboardPage() {
         </SurfaceCard>
 
         <SurfaceCard title="최근 활동" description="사용자 및 파이프라인의 최신 이벤트입니다.">
-          <ActivityFeed activities={mockAdminActivities} />
+          <ActivityFeed activities={activities} />
         </SurfaceCard>
 
         <SurfaceCard title="시스템 상태" description="핵심 서비스 상태를 빠르게 확인합니다.">
@@ -245,12 +365,12 @@ export function AdminDashboardPage() {
           <DocumentMiniTable documents={documents.slice(0, 5)} />
         </SurfaceCard>
 
-        <SurfaceCard title="최근 질문" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="채팅 열기" to="/admin/chats" />} className="min-h-[520px]">
+        <SurfaceCard title="최근 메시지" description="가장 최근 채팅 활동입니다." action={<PageLinkHint label="세션 보기" to="/admin/chats" />} className="min-h-[520px]">
           <ChatMiniTable chats={recentChats}/>
         </SurfaceCard>
 
         <SurfaceCard title="실패 로그" description="우선 확인이 필요한 항목입니다." action={<PageLinkHint label="확인하기" to="/admin/documents?status=failed" />} className="min-h-[520px]">
-          <FailureLogList />
+          <FailureLogList logs={failureLogs} />
         </SurfaceCard>
       </div>
     </div>
