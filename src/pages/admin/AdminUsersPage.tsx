@@ -1,27 +1,85 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { AdminTable, mockAdminUsers, RoleBadge, SurfaceCard, UserStatusBadge } from "@/pages/admin/adminShared";
+import { AdminTable, RoleBadge, SurfaceCard, UserStatusBadge } from "@/pages/admin/adminShared";
+import { getAdminUsers, type AdminUserDto } from "@/lib/chatApi";
+import { showToast } from "@/stores/notificationStore";
+
+type AdminUserRow = {
+  id: string;
+  name: string;
+  email: string;
+  status: "active" | "inactive" | "dormant";
+  userType: "USER" | "ADMIN";
+  joinedAt: string;
+};
+
+function formatJoinedAt(value: string) {
+  return new Date(value).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function toAdminUserRow(user: AdminUserDto): AdminUserRow {
+  return {
+    id: user.user_id,
+    name: user.name,
+    email: user.email,
+    userType: user.user_type,
+    joinedAt: formatJoinedAt(user.created_at),
+    status: "active",
+  };
+}
 
 export function AdminUsersPage() {
   const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await getAdminUsers();
+        setUsers(data.map(toAdminUserRow));
+      } catch (error) {
+        showToast({
+          title: "사용자 목록 조회 실패",
+          description: error instanceof Error ? error.message : "관리자 사용자 목록을 불러오지 못했습니다.",
+          tone: "error",
+        });
+      }
+    };
+
+    void fetchUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return mockAdminUsers;
-    return mockAdminUsers.filter((entry) => entry.name.toLowerCase().includes(query) || entry.email.toLowerCase().includes(query));
-  }, [search]);
+
+    if (!query) return users;
+
+    return users.filter(
+      (entry) =>
+        entry.name.toLowerCase().includes(query) ||
+        entry.email.toLowerCase().includes(query)
+    );
+  }, [search, users]);
 
   return (
     <div className="space-y-6">
-
       <SurfaceCard
         title="사용자 목록"
-        description="테이블 구조를 유지한 채, 이후 API 액션을 쉽게 붙일 수 있게 구성했습니다."
+        description="관리자 권한으로 전체 사용자 정보를 조회합니다."
         action={
           <div className="relative w-full md:w-[300px]">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="사용자 검색" className="h-11 rounded-2xl border-slate-200 bg-slate-50 pl-11" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="사용자 검색"
+              className="h-11 rounded-2xl border-slate-200 bg-slate-50 pl-11"
+            />
           </div>
         }
       >
