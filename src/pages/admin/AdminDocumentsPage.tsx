@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { getAdminDocuments, deleteAdminDocument, type UploadedDocumentDto } from "@/lib/chatApi";
+import { getAdminDocuments, deleteAdminDocument, getAdminUsers, type UploadedDocumentDto, type AdminUserDto } from "@/lib/chatApi";
 import { showToast } from "@/stores/notificationStore";
 import { type AdminDocumentRow, type AdminDocumentStatus } from "@/types/adminDocument";
 import { documentStatusLabel, DocumentRow, SurfaceCard } from "@/pages/admin/adminShared";
@@ -49,11 +49,15 @@ function mapAdminDocumentStatus(
   }
 }
 
-function toAdminDocumentRow(document: UploadedDocumentDto): AdminDocumentRow {
+function toAdminDocumentRow(
+  document: UploadedDocumentDto,
+  userMap: Map<string, string>
+): AdminDocumentRow {
   return {
     id: document.document_id,
     sessionId: document.session_id,
     userId: document.user_id,
+    userName: userMap.get(document.user_id) ?? "알 수 없음",
     name: document.file_name,
     status: mapAdminDocumentStatus(document.status),
     summary: document.summary?.trim() || "요약 없음",
@@ -76,11 +80,18 @@ export function AdminDocumentsPage() {
       setIsLoading(true);
 
       try {
-        const data = await getAdminDocuments();
+        const [documentData, userData] = await Promise.all([
+          getAdminDocuments(),
+          getAdminUsers(),
+        ]);
+
+        const userMap = new Map<string, string>(
+          userData.map((user) => [user.user_id, user.name])
+        );
 
         setDocuments(
-          data
-            .map(toAdminDocumentRow)
+          documentData
+            .map((document) => toAdminDocumentRow(document, userMap))
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         );
       } catch (error) {
@@ -134,12 +145,15 @@ export function AdminDocumentsPage() {
 
   const filteredDocuments = useMemo(() => {
     const query = search.trim().toLowerCase();
+
     return documents.filter((entry) => {
       const matchesQuery =
         !query ||
         entry.name.toLowerCase().includes(query) ||
+        entry.userName.toLowerCase().includes(query) ||
         entry.userId.toLowerCase().includes(query) ||
         documentStatusLabel[entry.status].toLowerCase().includes(query);
+
       const matchesStatus = activeStatus === "all" || entry.status === activeStatus;
       return matchesQuery && matchesStatus;
     });

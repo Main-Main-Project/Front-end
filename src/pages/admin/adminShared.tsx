@@ -67,12 +67,14 @@ export const systemStatusLabel: Record<AdminSystemStatus["status"], string> = {
 };
 
 export function getAdminStats({
+  userCount,
   documentCount,
   todayQuestionCount,
   failedDocumentCount,
   todayQuestionDetail,
   failedDocumentDetail,
 }: {
+  userCount: number;
   documentCount: number;
   todayQuestionCount: number;
   failedDocumentCount: number;
@@ -82,7 +84,7 @@ export function getAdminStats({
   return [
     {
       label: "총 사용자 수",
-      value: "1,245",
+      value: String(userCount),
       unit: "명",
       detail: "전체 가입 사용자",
       accent: "from-blue-50 to-indigo-50",
@@ -338,8 +340,15 @@ function formatFailureTime(value: string) {
   return parts[1] ?? value;
 }
 
-export function FailureLogList() {
-  const visibleLogs = mockFailureLogs.slice(0, 5);
+export type FailureLogItem = {
+  id: string;
+  timestamp: string;
+  item: string;
+  reason: string;
+};
+
+export function FailureLogList({ logs }: { logs: FailureLogItem[] }) {
+  const visibleLogs = logs.slice(0, 5);
   const emptyRows = Math.max(0, 5 - visibleLogs.length);
 
   return (
@@ -522,9 +531,9 @@ export function DocumentRow({
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-500">{document.summary}</p>
         </div>
-        <div className="flex flex-col gap-3 lg:min-w-[220px]">
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-            <p>업로더 ID: {document.userId}</p>
+        <div className="flex flex-col gap-3 lg:min-w-[260px] xl:min-w-[300px]">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500 break-words">
+            <p>업로더: {document.userName}</p>
             <p className="mt-1">업로드: {document.uploadedAt}</p>
           </div>
 
