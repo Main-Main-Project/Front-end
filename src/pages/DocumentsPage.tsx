@@ -120,6 +120,37 @@ export function DocumentsPage() {
     }
   };
 
+  const handleDownloadSummary = () => {
+    if (!selected) return;
+
+    const summary = selected.summary?.trim();
+    if (!summary || summary === "요약 없음") {
+      showToast({
+        title: "다운로드 불가",
+        description: "다운로드할 요약이 없습니다.",
+        tone: "error",
+      });
+      return;
+    }
+
+    const safeFileName = selected.name.replace(/\.[^/.]+$/, "").replace(/[\\/:*?"<>|]/g, "_");
+    const content = `${selected.name} 요약\n\n업로드: ${selected.uploadedAt}\n\n${summary}`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${safeFileName}_summary.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+  };
+
+  const hasSummary =
+    !!selected?.summary?.trim() && selected.summary.trim() !== "요약 없음";
+
   if (!selected) return null;
 
   return (
@@ -163,14 +194,25 @@ export function DocumentsPage() {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => void handleDeleteDocument()}
-            disabled={isDeletingDocument}
-          >
-            {isDeletingDocument ? "삭제 중..." : "삭제"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDownloadSummary}
+              disabled={!hasSummary}
+            >
+              요약 다운로드
+            </Button>
+
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleDeleteDocument()}
+              disabled={isDeletingDocument}
+            >
+              {isDeletingDocument ? "삭제 중..." : "삭제"}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6 rounded-xl border border-border bg-muted/50 p-4 text-sm leading-7">
